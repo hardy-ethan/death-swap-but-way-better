@@ -26,7 +26,7 @@ $$(a)gray$(b)"Make someone leave a bedrock trail: 40 secs"$(c)25a
 $$(a)gray$(b)"Give someone blindness & darkness: 40 secs"$(c)26a
 $$(a)light_gray$(b)"Give yourself one ravager spawn egg"$(c)27a
 $$(a)red$(b)"Give yourself an elytra & fireworks"$(c)28a
-$$(a)white$(b)"Give yourself a milk bucket to clear effects"$(c)29a
+$$(a)white$(b)"Give yourself a milk bucket & 2 golden apples"$(c)29a
 $$(a)orange$(b)"Give yourself a fire resistance potion"$(c)30a
 $$(a)orange$(b)"Shield yourself from negative items: 3 mins"$(c)31a
 $$(a)light_gray$(b)"Spawn falling anvils above someone"$(c)32a
@@ -74,7 +74,7 @@ $$(a)gray$(b)"Set /difficulty to hard"$(c)73a
 $$(a)orange$(b)"Set /difficulty to normal"$(c)74a
 $$(a)lime$(b)"Set /difficulty to easy"$(c)75a
 $$(a)green$(b)"Teleport someone to a superflat world"$(c)76a
-$$(a)brown$(b)"Give yourself a crafting table & furnace"$(c)77a
+$$(a)brown$(b)"Give yourself a crafting table, furnace, & materials"$(c)77a
 $$(a)brown$(b)"Crash somebody's Minecraft game"$(c)78a
 $$(a)brown$(b)"Turn OFF Keep Inventory (or ON if its off)"$(c)79a
 $$(a)white$(b)"Put someone into spectator mode: 20 secs"$(c)80a
@@ -91,7 +91,7 @@ $$(a)purple$(b)"Make the game low-gravity: 3 minutes"$(c)90a
 $$(a)lime$(b)"Take NO fall damage for the next 5 minutes"$(c)91a
 $$(a)purple$(b)"Make someone's ears bleed (HEADPHONE WARNING!)"$(c)92a
 $$(a)magenta$(b)"Summon a Stronghold below you"$(c)93a
-$$(a)orange$(b)"Give yourself a flint & steel"$(c)94a
+$$(a)orange$(b)"Give yourself a flint & steel & iron ingot"$(c)94a
 $$(a)green$(b)"Put someone into Parkour Civilization (from Youtube)"$(c)95a
 $$(a)cyan$(b)"Secretly spy on what someone's currently doing"$(c)96a
 $$(a)orange$(b)"Shield yourself from negative items: 2.5 mins"$(c)97a

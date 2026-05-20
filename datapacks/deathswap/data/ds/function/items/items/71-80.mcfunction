@@ -10,7 +10,7 @@ $execute if score Lang Core matches 1 if score i$(i) Items matches 75 run item r
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 76 run item replace entity @s hotbar.$(slot) with green_dye[custom_name={"color":"green","text":"Teleport someone to a superflat world"},lore=["Throwback 2014"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 77 run item replace entity @s hotbar.$(slot) with brown_dye[custom_name={"color":"green","text":"Give yourself a crafting table & furnace"},lore=["In case you can't get the essentials"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 77 run item replace entity @s hotbar.$(slot) with brown_dye[custom_name={"color":"green","text":"Give yourself a crafting table, furnace, & materials"},lore=["In case you can't get the essentials"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 78 run item replace entity @s hotbar.$(slot) with brown_dye[custom_name={"color":"yellow","text":"Crash somebody's Minecraft game"},lore=["Breaking the fourth.. er, actually all the walls"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
@@ -32,7 +32,7 @@ $execute if score Lang Core matches 2 if score i$(i) Items matches 75 run item r
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 76 run item replace entity @s hotbar.$(slot) with green_dye[custom_name={"color":"green","text":"将某人传送到一个超平坦世界"},lore=["Throwback 2014"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 2 if score i$(i) Items matches 77 run item replace entity @s hotbar.$(slot) with brown_dye[custom_name={"color":"green","text":"给自己一个工作台和熔炉"},lore=["In case you can't get the essentials"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 2 if score i$(i) Items matches 77 run item replace entity @s hotbar.$(slot) with brown_dye[custom_name={"color":"green","text":"给自己工作台、熔炉和材料"},lore=["In case you can't get the essentials"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 78 run item replace entity @s hotbar.$(slot) with brown_dye[custom_name={"color":"yellow","text":"让别人的Minecraft游戏崩溃"},lore=["Breaking the fourth.. er, actually all the walls"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 

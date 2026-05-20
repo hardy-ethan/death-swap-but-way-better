@@ -34,7 +34,7 @@ execute as @a[tag=playing,tag=in_creativeMode] if score @s creativeMode matches 
 execute as @a[tag=playing,tag=in_creativeMode] if score @s creativeMode matches ..5 run function ds:items/misc/exit_creative_mode
 
 # Motion sickness/spinning (21)
-execute as @a[tag=playing,tag=motion_sick] at @s if score @s motion_sick matches 1.. run rotate @s ~20 ~0.1
+execute as @a[tag=playing,tag=motion_sick] at @s if score @s motion_sick matches 1.. run rotate @s ~10 ~0.1
 execute as @a[tag=playing,tag=motion_sick] at @s if score @s motion_sick matches 1.. run scoreboard players remove @s motion_sick 5
 execute as @a[tag=playing,tag=motion_sick] at @s if score @s motion_sick matches ..5 run function ds:items/misc/done_spinning
 

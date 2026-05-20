@@ -14,7 +14,7 @@ $execute if score Lang Core matches 1 if score i$(i) Items matches 27 run item r
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 28 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"Give yourself an elytra & fireworks"},lore=["Because fall damage-based traps are just too lame"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 29 run item replace entity @s hotbar.$(slot) with white_dye[custom_name={"color":"white","text":"Give yourself a milk bucket to clear effects"},lore=["Insert 2016 'he needs some milk' meme here"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 29 run item replace entity @s hotbar.$(slot) with white_dye[custom_name={"color":"white","text":"Give yourself a milk bucket & 2 golden apples"},lore=["Insert 2016 'he needs some milk' meme here"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 30 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"gold","text":"Give yourself a fire resistance potion"},lore=["Because the Nether exists, yunno?"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
@@ -36,6 +36,6 @@ $execute if score Lang Core matches 2 if score i$(i) Items matches 27 run item r
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 28 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"给自己一套鞘翅和烟花"},lore=["Because fall damage-based traps are just too lame"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 2 if score i$(i) Items matches 29 run item replace entity @s hotbar.$(slot) with white_dye[custom_name={"color":"white","text":"给自己一milk bucket个牛奶桶来清除效果"},lore=["Insert 2016 'he needs some milk' meme here"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 2 if score i$(i) Items matches 29 run item replace entity @s hotbar.$(slot) with white_dye[custom_name={"color":"white","text":"给自己一个牛奶桶和2个金苹果"},lore=["Insert 2016 'he needs some milk' meme here"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 30 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"gold","text":"给自己一瓶防火药水"},lore=["Because the Nether exists, yunno?"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1

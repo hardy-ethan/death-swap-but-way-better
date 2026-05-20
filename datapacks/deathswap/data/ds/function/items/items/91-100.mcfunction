@@ -4,7 +4,7 @@ $execute if score Lang Core matches 1 if score i$(i) Items matches 92 run item r
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 93 run item replace entity @s hotbar.$(slot) with magenta_dye[custom_name={"color":"green","text":"Summon a Stronghold below you"},lore=["Because the nearest regular one is 20 million blocks away"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 94 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"white","text":"Give yourself a flint & steel"},lore=["Light it up, up up, light it up, up, up"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 94 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"white","text":"Give yourself a flint & steel & iron ingot"},lore=["Light it up, up up, light it up, up, up"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 95 run item replace entity @s hotbar.$(slot) with green_dye[custom_name={"color":"green","text":"Put someone into Parkour Civilization (from Youtube)"},lore=["Evbo, noooooooo!"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
@@ -26,7 +26,7 @@ $execute if score Lang Core matches 2 if score i$(i) Items matches 92 run item r
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 93 run item replace entity @s hotbar.$(slot) with magenta_dye[custom_name={"color":"green","text":"在你下方召唤一个地下城要塞"},lore=["Because the nearest regular one is 20 million blocks away"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 2 if score i$(i) Items matches 94 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"white","text":"给自己准备一块打火石和钢片"},lore=["Light it up, up up, light it up, up, up"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 2 if score i$(i) Items matches 94 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"white","text":"给自己打火石和铁锭"},lore=["Light it up, up up, light it up, up, up"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 95 run item replace entity @s hotbar.$(slot) with green_dye[custom_name={"color":"green","text":"把某人送入跑酷文明 (from Youtube)"},lore=["Evbo, noooooooo!"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
