@@ -1,6 +1,6 @@
 $execute if score Lang Core matches 1 if score i$(i) Items matches 51 run item replace entity @s hotbar.$(slot) with white_dye[custom_name={"color":"white","text":"Spawn a bunch of cobwebs on someone"},lore=["Now that's what I call a sticky situation!"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 52 run item replace entity @s hotbar.$(slot) with purple_dye[custom_name={"color":"aqua","text":"Give yourself 3 ender pearlss"},lore=["Fall damage death traps are boring anyway"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 52 run item replace entity @s hotbar.$(slot) with purple_dye[custom_name={"color":"aqua","text":"Give yourself 3 ender pearls"},lore=["Fall damage death traps are boring anyway"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 53 run item replace entity @s hotbar.$(slot) with brown_dye[custom_name={"color":"yellow","text":"Spawn a village right where you are"},lore=["Villages are overpowered anyway"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 

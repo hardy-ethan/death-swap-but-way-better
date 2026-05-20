@@ -10,13 +10,13 @@ $execute if score Lang Core matches 1 if score i$(i) Items matches 105 run item 
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 106 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"Teleport someone directly to the Nether"},lore=["A Throwback to 1.16"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 107 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"Summon Oppenheimer's NUCLEAR bomb on someone"},lore=["Now you are become death, destoryer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 107 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"Summon Oppenheimer's NUCLEAR bomb on someone"},lore=["Now you are become death, destroyer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 108 run item replace entity @s hotbar.$(slot) with cyan_dye[custom_name={"color":"white","text":"Summon an Ancient City below you"},lore=["Now you are become death, destoryer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 108 run item replace entity @s hotbar.$(slot) with cyan_dye[custom_name={"color":"white","text":"Summon an Ancient City below you"},lore=["Now you are become death, destroyer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 109 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"yellow","text":"Set everything around someone on fire"},lore=["We didn't start the fire..."],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 110 run item replace entity @s hotbar.$(slot) with purple_dye[custom_name={"color":"light_purple","text":"Spawn 100 Endermans on someone"},lore=["We didn't start the fire..."],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 110 run item replace entity @s hotbar.$(slot) with purple_dye[custom_name={"color":"light_purple","text":"Spawn 100 Endermen on someone"},lore=["We didn't start the fire..."],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 #
 
@@ -32,9 +32,9 @@ $execute if score Lang Core matches 2 if score i$(i) Items matches 105 run item 
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 106 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"将某人直接传送到下界"},lore=["A Throwback to 1.16"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 2 if score i$(i) Items matches 107 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"Oppenheimer对某人召唤奥本海默的核弹"},lore=["Now you are become death, destoryer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 2 if score i$(i) Items matches 107 run item replace entity @s hotbar.$(slot) with red_dye[custom_name={"color":"red","text":"Oppenheimer对某人召唤奥本海默的核弹"},lore=["Now you are become death, destroyer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 2 if score i$(i) Items matches 108 run item replace entity @s hotbar.$(slot) with cyan_dye[custom_name={"color":"white","text":"在你下方建造一座古城"},lore=["Now you are become death, destoryer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 2 if score i$(i) Items matches 108 run item replace entity @s hotbar.$(slot) with cyan_dye[custom_name={"color":"white","text":"在你下方建造一座古城"},lore=["Now you are become death, destroyer of Minecrafts"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 2 if score i$(i) Items matches 109 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"yellow","text":"将某人周围的一切付之一炬"},lore=["We didn't start the fire..."],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 

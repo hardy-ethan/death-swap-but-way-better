@@ -4,7 +4,7 @@ $execute if score Lang Core matches 1 if score i$(i) Items matches 2 run item re
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 3 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"gold","text":"Shield yourself from negative items: 2 mins"},lore=["Nobody can use any items on you for 2 minutes!"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 4 run item replace entity @s hotbar.$(slot) with purple_dye[custom_name={"color":"light_purple","text":"Teleport random person to the End"},lore=["Lets beat Minecraft!"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 4 run item replace entity @s hotbar.$(slot) with purple_dye[custom_name={"color":"light_purple","text":"Teleport someone to the End"},lore=["Lets beat Minecraft!"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 5 run item replace entity @s hotbar.$(slot) with yellow_dye[custom_name={"color":"yellow","text":"Swap all players right NOW!"},lore=["Makes the swap happen half a second after dropping"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 

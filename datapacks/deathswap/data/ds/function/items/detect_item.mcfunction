@@ -1,7 +1,7 @@
 $$(a)light_blue$(b)"Give a player speed 1 billion: 40 secs"$(c)1a
 $$(a)gray$(b)"Give yourself materials to build a wither"$(c)2a
 $$(a)orange$(b)"Shield yourself from negative items: 2 mins"$(c)3a
-$$(a)purple$(b)"Teleport random person to the End"$(c)4a
+$$(a)purple$(b)"Teleport someone to the End"$(c)4a
 $$(a)yellow$(b)"Swap all players right NOW!"$(c)5a
 $$(a)pink$(b)"Teleport someone really far away"$(c)6a
 $$(a)light_blue$(b)"Give yourself a super fast shovel"$(c)7a
@@ -29,7 +29,7 @@ $$(a)red$(b)"Give yourself an elytra & fireworks"$(c)28a
 $$(a)white$(b)"Give yourself a milk bucket to clear effects"$(c)29a
 $$(a)orange$(b)"Give yourself a fire resistance potion"$(c)30a
 $$(a)orange$(b)"Shield yourself from negative items: 3 mins"$(c)31a
-$$(a)light_gray$(b)"Spawn falling anvills above someone"$(c)32a
+$$(a)light_gray$(b)"Spawn falling anvils above someone"$(c)32a
 $$(a)cyan$(b)"Put someone in adventure mode: 40 secs"$(c)33a
 $$(a)yellow$(b)"Place bells all around someone"$(c)34a
 $$(a)orange$(b)"Place a layer of lava above someone"$(c)35a
@@ -49,7 +49,7 @@ $$(a)gray$(b)"Block out the sun for someone"$(c)48a
 $$(a)lime$(b)"Fill up someone's inventory with junk"$(c)49a
 $$(a)red$(b)"Transform the world around someone into the Nether"$(c)50a
 $$(a)white$(b)"Spawn a bunch of cobwebs on someone"$(c)51a
-$$(a)purple$(b)"Give yourself 3 ender pearlss"$(c)52a
+$$(a)purple$(b)"Give yourself 3 ender pearls"$(c)52a
 $$(a)brown$(b)"Spawn a village right where you are"$(c)53a
 $$(a)orange$(b)"Spawn a desert temple right where you are"$(c)54a
 $$(a)gray$(b)"Summon a California earthquake on EVERYONE except you"$(c)55a
@@ -107,6 +107,6 @@ $$(a)red$(b)"Teleport someone directly to the Nether"$(c)106a
 $$(a)red$(b)"Summon Oppenheimer's NUCLEAR bomb on someone"$(c)107a
 $$(a)cyan$(b)"Summon an Ancient City below you"$(c)108a
 $$(a)orange$(b)"Set everything around someone on fire"$(c)109a
-$$(a)purple$(b)"Spawn 100 Endermans on someone"$(c)110a
+$$(a)purple$(b)"Spawn 100 Endermen on someone"$(c)110a
 
 # The text after $(c) shows the function in "ds:items/use/" that the dropped item with the name after $(b) and the dye color after $(a) is triggering

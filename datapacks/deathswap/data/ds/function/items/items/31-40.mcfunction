@@ -1,6 +1,6 @@
 $execute if score Lang Core matches 1 if score i$(i) Items matches 31 run item replace entity @s hotbar.$(slot) with orange_dye[custom_name={"color":"gold","text":"Shield yourself from negative items: 3 mins"},lore=["Nobody can use any items on you for 3 minutes!"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
-$execute if score Lang Core matches 1 if score i$(i) Items matches 32 run item replace entity @s hotbar.$(slot) with light_gray_dye[custom_name={"color":"white","text":"Spawn falling anvills above someone"},lore=["A worse concussion than in NFL Football"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
+$execute if score Lang Core matches 1 if score i$(i) Items matches 32 run item replace entity @s hotbar.$(slot) with light_gray_dye[custom_name={"color":"white","text":"Spawn falling anvils above someone"},lore=["A worse concussion than in NFL Football"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
 $execute if score Lang Core matches 1 if score i$(i) Items matches 33 run item replace entity @s hotbar.$(slot) with cyan_dye[custom_name={"color":"aqua","text":"Put someone in adventure mode: 40 secs"},lore=["Minecraft without the 'mine' part"],enchantment_glint_override=true,custom_data={deathswapitem:true}] 1
 
