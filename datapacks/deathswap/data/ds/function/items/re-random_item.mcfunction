@@ -70,7 +70,7 @@ $execute if score i$(i) Items = z69 Items run function ds:items/random_item {i:$
 $execute if score i$(i) Items = z70 Items run function ds:items/random_item {i:$(i)}
 
 $execute if score i$(i) Items matches 47 if score randomCycle Core matches 1 run function ds:items/random_item {i:$(i)}
-$execute if score i$(i) Items matches 47 unless score timeCycle Core matches ..100 run function ds:items/random_item {i:$(i)}
+$execute if score i$(i) Items matches 47 if score timeCycle Core matches ..100 run function ds:items/random_item {i:$(i)}
 $execute if score i$(i) Items matches 13 if score noHunger Core matches 1 unless score noNatRegen Core matches 1 run function ds:items/random_item {i:$(i)}
 $execute if score i$(i) Items matches 57 if entity @s[tag=got_notch_apple] run function ds:items/random_item {i:$(i)}
 $execute if score i$(i) Items matches 68 if entity @s[tag=has8_hearts] run function ds:items/random_item {i:$(i)}

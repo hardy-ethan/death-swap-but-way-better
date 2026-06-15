@@ -5,6 +5,7 @@ $execute if score Lang Core matches 1 run title @p[scores={permPNo=$(s)}] subtit
 $execute if score Lang Core matches 2 run title @p[scores={permPNo=$(s)}] subtitle {"text":">> 您在三分钟内无法使用任何物品! <<","color":"red"}
 $scoreboard players set @p[scores={permPNo=$(s)}] currItem 0
 $execute as @p[scores={permPNo=$(s)}] run trigger select set 0
+$tag @p[scores={permPNo=$(s)}] remove has_new_dye
 
 $tellraw @a [{"text":">> ","color":"green"},{"selector":"@s","bold":false}," --> ",{"text":"Blocked ","color":"aqua"},{"selector":"@p[scores={permPNo=$(s)}]","bold":false},{"text":" from using any items for 3 minutes","color":"aqua"}]
 

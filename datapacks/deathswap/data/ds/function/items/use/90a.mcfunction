@@ -1,7 +1,7 @@
 execute as @s run function ds:items/use/all
-scoreboard players set lowGrav Items 18100
+scoreboard players set lowGrav Items 18200
 title @a title " "
-title @a subtitle {"text":"Low-gravity: 90 seconds","color":"light_purple"}
+title @a subtitle {"text":"Low-gravity: 3 minutes","color":"light_purple"}
 execute as @a run attribute @s minecraft:gravity base set 0.008
 execute as @a run attribute @s minecraft:fall_damage_multiplier base set 0.0
 

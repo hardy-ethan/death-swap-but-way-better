@@ -7,6 +7,7 @@ clear @s minecraft:command_block_minecart
 clear @s minecraft:repeating_command_block
 clear @s minecraft:chain_command_block
 clear @s minecraft:enchanted_golden_apple
+execute as @s at @s run kill @e[type=item,nbt={Item:{id:"minecraft:enchanted_golden_apple"}},distance=..5]
 
 title @s[tag=got_notch_apple] title " "
 title @s[tag=got_notch_apple] subtitle {"text":"Your golden apple was returned!","color":"yellow"}

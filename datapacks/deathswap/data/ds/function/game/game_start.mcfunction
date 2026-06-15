@@ -22,8 +22,8 @@ execute as @a[tag=playing] at @s run spawnpoint @s ~ ~ ~
 gamemode spectator @a[tag=!playing]
 tp @a[tag=!playing] @r[tag=playing]
 
-execute if score Lang Core matches 1 run tellraw @a [{"text":"Map created by Jerries","color":"yellow","bold":true},{"text":" (Map version 1.0.2)","color":"yellow","bold":false,"italic":true}]
-execute if score Lang Core matches 2 run tellraw @a [{"text":"地图由 Jerries 制作","color":"yellow","bold":true},{"text":" (地图版本 1.0.2)","color":"yellow","bold":false,"italic":true}]
+execute if score Lang Core matches 1 run tellraw @a [{"text":"Map created by Jerries","color":"yellow","bold":true},{"text":" (Map version 1.0.3)","color":"yellow","bold":false,"italic":true}]
+execute if score Lang Core matches 2 run tellraw @a [{"text":"地图由 Jerries 制作","color":"yellow","bold":true},{"text":" (地图版本 1.0.3)","color":"yellow","bold":false,"italic":true}]
 
 tellraw @a {"text":"Additional datapack work by TheWorfer27 and Melumi11","color":"green","italic":true}
 

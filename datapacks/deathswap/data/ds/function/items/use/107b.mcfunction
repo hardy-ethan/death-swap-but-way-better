@@ -1,11 +1,14 @@
-$execute as @p[scores={permPNo=$(s)}] at @s run summon tnt ~ ~1 ~ {fuse:300,explosion_power:34,Tags:["ent"]}
-$execute as @p[scores={permPNo=$(s)}] at @s run summon tnt ~ ~1 ~ {fuse:305,explosion_power:30,Tags:["ent"]}
+$execute as @p[scores={permPNo=$(s)}] at @s run summon tnt ~ ~1 ~ {fuse:180,explosion_power:40,Tags:["ent"]}
+$execute as @p[scores={permPNo=$(s)}] at @s run summon tnt ~2 ~1 ~ {fuse:180,explosion_power:40,Tags:["ent"]}
+$execute as @p[scores={permPNo=$(s)}] at @s run summon tnt ~-2 ~1 ~ {fuse:180,explosion_power:40,Tags:["ent"]}
+$execute as @p[scores={permPNo=$(s)}] at @s run summon tnt ~ ~1 ~2 {fuse:180,explosion_power:40,Tags:["ent"]}
+$execute as @p[scores={permPNo=$(s)}] at @s run summon tnt ~ ~1 ~-2 {fuse:180,explosion_power:40,Tags:["ent"]}
 
 $title @p[scores={permPNo=$(s)}] title [{"text":">> ","color":"gold","bold":true},{"text":"NUKE!!!","color":"red"},{"text":" <<","color":"gold"}]
 
-$execute if score Lang Core matches 1 run title @p[scores={permPNo=$(s)}] subtitle [{"text":"Explodes in ","color":"red","bold":true},{"text":"15","color":"green"},{"text":" secs -- RUN TF AWAY!!","color":"red"}]
+$execute if score Lang Core matches 1 run title @p[scores={permPNo=$(s)}] subtitle [{"text":"Explodes in ","color":"red","bold":true},{"text":"12","color":"green"},{"text":" secs -- RUN TF AWAY!!","color":"red"}]
 
-$execute if score Lang Core matches 2 run title @p[scores={permPNo=$(s)}] subtitle [{"text":"15","color":"green"},{"text":"秒后爆炸 -- 赶紧逃命!!","color":"red"}]
+$execute if score Lang Core matches 2 run title @p[scores={permPNo=$(s)}] subtitle [{"text":"12","color":"green"},{"text":"秒后爆炸 -- 赶紧逃命!!","color":"red"}]
 
 $tag @p[scores={permPNo=$(s)}] add 107alarm
 setblock 19 50 15 minecraft:redstone_block

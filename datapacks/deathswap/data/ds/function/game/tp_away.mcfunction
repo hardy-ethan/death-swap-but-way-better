@@ -1,6 +1,6 @@
-execute if score Lang Core matches 1 run tellraw @s [{"text":">> ","color":"dark_purple"},{"text":"You teleported somewhere far away from lag!","color":"light_purple"},"\n",{"text":"You can use this trigger again in 8 minutes!","color":"yellow"}]
+execute if score Lang Core matches 1 run tellraw @s [{"text":">> ","color":"dark_purple"},{"text":"You teleported somewhere far away from lag!","color":"light_purple"}]
 
-execute if score Lang Core matches 2 run tellraw @s [{"text":">> ","color":"dark_purple"},{"text":"你传送到了一个远离卡顿的地方!","color":"light_purple"},"\n",{"text":"你可以在 8 分钟后再次使用此触发器!","color":"yellow"}]
+execute if score Lang Core matches 2 run tellraw @s [{"text":">> ","color":"dark_purple"},{"text":"你传送到了一个远离卡顿的地方!","color":"light_purple"}]
 
 spreadplayers 0 0 10000 29999000 false @s
 execute as @s at @s run playsound minecraft:entity.enderman.teleport master @s ~ ~ ~ 9

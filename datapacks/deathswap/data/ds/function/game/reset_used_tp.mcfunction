@@ -8,5 +8,5 @@ execute if score Lang Core matches 2 run title @s subtitle {"text":"如果出现
 
 tag @s remove cant_tp_away
 scoreboard players set @s used_tp_cycle 0
-scorebaord players set @s tp_away 0
+scoreboard players set @s tp_away 0
 scoreboard players enable @s tp_away

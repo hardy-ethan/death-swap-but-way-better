@@ -32,6 +32,7 @@ $summon parched ~-5 ~ ~ $(d)
 $summon parched ~ ~ ~5 $(d)
 $summon parched ~ ~ ~-5 $(d)
 
+$summon parched ~3 ~3 ~ $(d)
 $summon parched ~2 ~ ~ $(d)
 $summon parched ~-2 ~ ~ $(d)
 $summon parched ~ ~ ~2 $(d)

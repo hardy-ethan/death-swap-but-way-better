@@ -25,13 +25,7 @@ execute as @a[tag=playing,tag=jump_disabled] if score @s jump_disabled matches 1
 execute as @a[tag=playing,tag=jump_disabled] if score @s jump_disabled matches ..5 run function ds:items/misc/remove_no_jump
 
 # Creative mode (18)
-execute as @a[tag=playing,tag=in_creativeMode] run clear @s minecraft:command_block
-execute as @a[tag=playing,tag=in_creativeMode] run clear @s minecraft:command_block_minecart
-execute as @a[tag=playing,tag=in_creativeMode] run clear @s minecraft:repeating_command_block
-execute as @a[tag=playing,tag=in_creativeMode] run clear @s minecraft:chain_command_block
-execute as @a[tag=playing,tag=in_creativeMode] run clear @s minecraft:enchanted_golden_apple
-execute as @a[tag=playing,tag=in_creativeMode] if score @s creativeMode matches 1.. run scoreboard players remove @s creativeMode 5
-execute as @a[tag=playing,tag=in_creativeMode] if score @s creativeMode matches ..5 run function ds:items/misc/exit_creative_mode
+execute as @a[tag=playing,tag=in_creativeMode] at @s run function ds:items/misc/creativemode
 
 # Motion sickness/spinning (21)
 execute as @a[tag=playing,tag=motion_sick] at @s if score @s motion_sick matches 1.. run rotate @s ~10 ~0.1

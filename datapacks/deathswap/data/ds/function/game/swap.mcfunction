@@ -3,6 +3,10 @@ title @a subtitle " "
 execute if score Lang Core matches 1 run title @a actionbar {"text":">> Swapped! <<","color":"gold"}
 execute if score Lang Core matches 2 run title @a actionbar {"text":">> 球员互换! <<","color":"gold"}
 
+##execute as @a run attribute @s minecraft:fall_damage_multiplier base set 0.0
+gamerule fall_damage false
+schedule function ds:game/end_fall_dam_prot 1t
+
 execute as @a[tag=playing] run trigger tp_away set 0
 schedule function ds:game/give_back_tp 12s
 execute as @a[tag=96spying] run trigger 96spying set 1

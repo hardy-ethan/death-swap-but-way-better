@@ -35,4 +35,4 @@ scoreboard objectives setdisplay sidebar
 
 execute if score randomCycle Core matches 1 run function ds:game/random_cycle
 
-schedule function ds:game/game_start 3s
+schedule function ds:game/game_start 5s
