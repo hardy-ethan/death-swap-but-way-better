@@ -93,8 +93,11 @@ public final class ItemRegistry {
 
     private static void announce(com.deathswap.game.GameManager game, ServerPlayer self,
                                  String verb, ServerPlayer target, ChatFormatting color) {
-        String who = target == null || target == self ? "" : " " + target.getName().getString();
-        game.broadcast(">> " + self.getName().getString() + " --> " + verb + who, color);
+        // Use the scoreboard name (always the plain username) rather than
+        // getName(), which can render blank. Show the target whenever one is given
+        // — even when it's the user themselves — so the log never drops the "who".
+        String who = target == null ? "" : " " + target.getScoreboardName();
+        game.broadcast(">> " + self.getScoreboardName() + " --> " + verb + who, color);
     }
 
     /** Origin block for relative fills/builds (the executing player's feet). */
@@ -170,10 +173,19 @@ public final class ItemRegistry {
                 "Summon an 300 block-tall gravel tower", "You can never go wrong with the basics! ...right?")
                 .effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(self);
-                    BlockPos base = at(self).offset(2, 0, 0);
+                    BlockPos base = at(self).offset(3, 0, 0); // ~3, matching the datapack
+                    // Obsidian foundation + support columns (the datapack's gravel_base),
+                    // so the tower stands on "obby" instead of floating on gravel.
+                    Mc.setBlock(lvl, base.below(), Blocks.OBSIDIAN);
+                    Mc.fill(lvl, base.offset(-1, 0, 0), base.offset(-1, 1, 0), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, base.offset(1, 0, 0), base.offset(1, 1, 0), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, base.offset(0, 0, 1), base.offset(0, 1, 1), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, base.offset(0, 0, -1), base.offset(0, 1, -1), Blocks.OBSIDIAN, FillMode.ALL);
+                    // The gravel tower itself.
                     int top = Math.min(base.getY() + 300, lvl.getMaxY());
                     Mc.fill(lvl, base, new BlockPos(base.getX(), top, base.getZ()), Blocks.GRAVEL, FillMode.ALL);
-                    Mc.msg(self, "A gravel tower was placed right in front of you!", ChatFormatting.WHITE);
+                    Mc.msg(self, "A gravel tower (on an obsidian base) was placed right in front of you!",
+                            ChatFormatting.WHITE);
                 }).build());
 
         add(DeathSwapItem.of(10, BLUE, ChatFormatting.BLUE,
@@ -214,7 +226,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(14, RED, ChatFormatting.GOLD,
                 "Spawn TNT on someone", "They won't expect it!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    primeTnt(Mc.level(t), t.position(), 0, 1, 0, (byte) 85, 4);
+                    primeTnt(Mc.level(t), t.position(), 0, 1, 0, (byte) 85);
                     Mc.title(t, "RUN away!", "", ChatFormatting.RED, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Spawned ignited TNT on", t, ChatFormatting.RED);
                 }).build());
@@ -274,7 +286,7 @@ public final class ItemRegistry {
                 "Give a player motion sickness: 30 seconds", "Bro drove through the Rocky Mountains")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("motion_sick", 46 * 20,
-                            p -> p.setYRot(p.getYRot() + 10f), null));
+                            p -> Mc.rotateRelative(p, 10f, 0.1f), null));
                     announce(ctx.game(), self, "Gave motion sickness to", t, ChatFormatting.DARK_GREEN);
                 }).build());
 
@@ -303,14 +315,43 @@ public final class ItemRegistry {
                     List<ServerPlayer> all = ctx.game().alivePlayers();
                     ServerPlayer victim = all.get(self.getRandom().nextInt(all.size()));
                     victim.getInventory().clearContent();
-                    announce(ctx.game(), self, "Cleared a random person's inventory -->", victim, ChatFormatting.RED);
+                    Mc.title(victim, " ", self.getScoreboardName() + " cleared your inventory!",
+                            ChatFormatting.WHITE, ChatFormatting.RED);
+                    // Always name the unlucky player explicitly (it can be the user).
+                    ctx.game().broadcast(">> " + self.getScoreboardName()
+                            + " --> Cleared " + victim.getScoreboardName()
+                            + "'s inventory! (randomly chosen)", ChatFormatting.RED);
                 }).build());
 
         add(DeathSwapItem.of(25, GRAY, ChatFormatting.WHITE,
                 "Make someone leave a bedrock trail: 40 secs", "Wherever they walk, the blocks below them turn to bedrock.")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ctx.effects().apply(t, new ActiveEffect("bedrock_trail", 72 * 20,
-                            p -> Mc.setBlock(Mc.level(p), p.blockPosition().below(), Blocks.BEDROCK), null));
+                    BlockPos[] last = {null};
+                    ctx.effects().apply(t, new ActiveEffect("bedrock_trail", 72 * 20, p -> {
+                        // Replace the block the player is standing on (datapack ~-0.9),
+                        // without triggering neighbour/light updates — those are what
+                        // made a 36s-long per-tick trail tank the server's tick rate.
+                        ServerLevel lvl = Mc.level(p);
+                        BlockPos cur = BlockPos.containing(p.getX(), p.getY() - 0.9, p.getZ());
+                        // Fill any gap since the previous placement so the player can't
+                        // outrun the trail (and fall through it) when the server lags.
+                        if (last[0] != null) {
+                            int steps = Math.max(Math.abs(cur.getX() - last[0].getX()),
+                                    Math.abs(cur.getZ() - last[0].getZ()));
+                            if (steps > 0 && steps <= 8) { // skip the jump after a swap/teleport
+                                for (int i = 1; i < steps; i++) {
+                                    double f = (double) i / steps;
+                                    Mc.setBlockFast(lvl, new BlockPos(
+                                            (int) Math.round(last[0].getX() + (cur.getX() - last[0].getX()) * f),
+                                            (int) Math.round(last[0].getY() + (cur.getY() - last[0].getY()) * f),
+                                            (int) Math.round(last[0].getZ() + (cur.getZ() - last[0].getZ()) * f)),
+                                            Blocks.BEDROCK);
+                                }
+                            }
+                        }
+                        Mc.setBlockFast(lvl, cur, Blocks.BEDROCK);
+                        last[0] = cur;
+                    }, null));
                     Mc.title(t, " ", "Look below you!", ChatFormatting.WHITE, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Made a bedrock trail follow", t, ChatFormatting.WHITE);
                 }).build());
@@ -569,7 +610,7 @@ public final class ItemRegistry {
                 "Force a player to look down for 45 secs", "Always look where you're stepping!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("look_down", 45 * 20,
-                            p -> p.setXRot(Math.min(90f, p.getXRot() + 8f)), null));
+                            p -> Mc.rotateRelative(p, 0f, 8f), null));
                     announce(ctx.game(), self, "Forced a downward look for 45 seconds:", t, ChatFormatting.GREEN);
                 }).build());
 
@@ -595,12 +636,24 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
+                    // Bedrock floor & ceiling.
                     Mc.fill(lvl, o.offset(10, -1, 6), o.offset(-10, -1, -6), Blocks.BEDROCK, FillMode.ALL);
                     Mc.fill(lvl, o.offset(10, 2, 6), o.offset(-10, 2, -6), Blocks.BEDROCK, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(-10, 1, 6), Blocks.OBSIDIAN, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(10, 0, -6), o.offset(-10, 1, -6), Blocks.OBSIDIAN, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(10, 1, -6), Blocks.OBSIDIAN, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(-10, 0, 6), o.offset(-10, 1, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    // Lower wall ring: obsidian. Upper ring: crying obsidian (datapack).
+                    for (int[] r : new int[][]{{0, 0}, {1, 1}}) {
+                        int y = r[0];
+                        var block = r[1] == 0 ? Blocks.OBSIDIAN : Blocks.CRYING_OBSIDIAN;
+                        Mc.fill(lvl, o.offset(10, y, 6), o.offset(-10, y, 6), block, FillMode.ALL);
+                        Mc.fill(lvl, o.offset(10, y, -6), o.offset(-10, y, -6), block, FillMode.ALL);
+                        Mc.fill(lvl, o.offset(10, y, 6), o.offset(10, y, -6), block, FillMode.ALL);
+                        Mc.fill(lvl, o.offset(-10, y, 6), o.offset(-10, y, -6), block, FillMode.ALL);
+                    }
+                    // A torch for light, and a chest with a worn diamond pickaxe so the
+                    // prisoner can (slowly) mine their way out.
+                    Mc.setBlock(lvl, o, Blocks.TORCH);
+                    ItemStack escapePick = new ItemStack(Items.DIAMOND_PICKAXE);
+                    escapePick.set(net.minecraft.core.component.DataComponents.DAMAGE, 1500);
+                    Mc.placeChestWithItem(lvl, o.offset(2, 0, 1), escapePick);
                     announce(ctx.game(), self, "Trapped inside of a prison:", t, ChatFormatting.RED);
                 }).build());
 
@@ -657,11 +710,15 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(70, GREEN, ChatFormatting.GREEN,
                 "Launch a Viet Cong ambush on someone", "Queue the Rolling Stones music")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    double[][] ring = {{8, 0, 0}, {-8, 0, 0}, {0, 0, 8}, {0, 0, -8}, {8, 0, 2}, {-8, 0, 2},
-                            {2, 0, 8}, {2, 0, -8}, {6, 0, 6}, {-6, 0, 6}, {6, 0, -6}, {-6, 0, -6}};
+                    double[][] ring = {{8, 0}, {-8, 0}, {0, 8}, {0, -8}, {8, 2}, {-8, 2},
+                            {2, 8}, {2, -8}, {6, 6}, {-6, 6}, {6, -6}, {-6, -6}};
                     for (double[] d : ring) {
-                        Entity z = Mc.summonRel(t, EntityTypes.HUSK, d[0], d[1], d[2]);
-                        if (z instanceof Monster m) m.setCustomName(Component.literal("The Việt Cộng"));
+                        // Find a vertical gap so the husks don't suffocate in walls/hills.
+                        Entity z = Mc.summonRelSafe(t, EntityTypes.HUSK, d[0], d[1]);
+                        if (z instanceof Monster m) {
+                            m.setCustomName(Component.literal("The Việt Cộng"));
+                            m.setPersistenceRequired();
+                        }
                     }
                     announce(ctx.game(), self, "Ambushed with a Viet Cong attack:", t, ChatFormatting.GREEN);
                 }).build());
@@ -669,8 +726,13 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(71, LIGHT_BLUE, ChatFormatting.AQUA,
                 "Give yourself a one-hit-kill sword", "One hit, one kill, just in case...")
                 .effect((ctx, self, t) -> {
-                    ItemStack sword = new ItemStack(Items.NETHERITE_SWORD);
+                    // Datapack gives a diamond sword at 1 durability (damage=1560 of
+                    // 1561) so it breaks after a single swing — "ONE USE".
+                    ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
                     Mc.enchant(self, sword, Enchantments.SHARPNESS, 5);
+                    Mc.enchant(self, sword, Enchantments.FIRE_ASPECT, 1);
+                    Mc.enchant(self, sword, Enchantments.KNOCKBACK, 2);
+                    Mc.enchant(self, sword, Enchantments.LOOTING, 3);
                     sword.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                             Component.literal("One-hit-kill -- ONE USE!").withStyle(ChatFormatting.AQUA));
                     ItemAttributeModifiers mods = ItemAttributeModifiers.builder()
@@ -679,7 +741,9 @@ public final class ItemRegistry {
                                     999999.0, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
                             .build();
                     sword.set(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, mods);
-                    // Irreparable: no material can repair it in an anvil.
+                    // Leave exactly one point of durability so it shatters on use.
+                    sword.set(net.minecraft.core.component.DataComponents.DAMAGE, sword.getMaxDamage() - 1);
+                    // Irreparable: no material/anvil can top it back up.
                     sword.set(net.minecraft.core.component.DataComponents.REPAIRABLE,
                             new net.minecraft.world.item.enchantment.Repairable(
                                     net.minecraft.core.HolderSet.empty()));
@@ -934,10 +998,18 @@ public final class ItemRegistry {
                 "Gain a monster-proof forcefield: 3 mins", "Minus well just be peaceful mode for you")
                 .effect((ctx, self, t) -> {
                     ctx.effects().apply(self, new ActiveEffect("mob_forcefield", 185 * 20, p -> {
+                        ServerLevel lvl = Mc.level(p);
                         AABB box = p.getBoundingBox().inflate(3.2);
-                        for (Monster m : Mc.level(p).getEntitiesOfClass(Monster.class, box)) {
+                        for (Monster m : lvl.getEntitiesOfClass(Monster.class, box)) {
                             m.discard();
                         }
+                        // Purple dust ring so the forcefield is visible (datapack particle).
+                        Vec3 c = p.position();
+                        int color = 0x7519FF;
+                        Mc.dust(lvl, c.x + 2.2, c.y + 1, c.z, color, 1.2f, 1, 0.1, 0.1, 1.2);
+                        Mc.dust(lvl, c.x - 2.2, c.y + 1, c.z, color, 1.2f, 1, 0.1, 0.1, 1.2);
+                        Mc.dust(lvl, c.x, c.y + 1, c.z + 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
+                        Mc.dust(lvl, c.x, c.y + 1, c.z - 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
                     }, null));
                     Mc.title(self, " ", ">> Forcefield: 3 minutes! <<", ChatFormatting.WHITE, ChatFormatting.LIGHT_PURPLE);
                 }).build());
@@ -1004,10 +1076,13 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(107, RED, ChatFormatting.RED,
                 "Summon Oppenheimer's NUCLEAR bomb on someone", "Now you are become death, destroyer of Minecrafts")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ServerLevel lvl = Mc.level(t);
-                    Vec3 p = t.position();
-                    double[][] off = {{0, 1, 0}, {2, 1, 0}, {-2, 1, 0}, {0, 1, 2}, {0, 1, -2}};
-                    for (double[] d : off) primeTnt(lvl, p, d[0], d[1], d[2], (byte) 180, 40);
+                    // The datapack nuke is TNT with explosion_power:40 (the entity's
+                    // power field has no setter, so summon via command like the datapack
+                    // does — a plain primed-TNT entity only explodes at power 4).
+                    String nbt = "{fuse:180,explosion_power:40,Tags:[\"ent\"]}";
+                    for (String pos : new String[]{"~ ~1 ~", "~2 ~1 ~", "~-2 ~1 ~", "~ ~1 ~2", "~ ~1 ~-2"}) {
+                        Mc.runAt(t, "summon tnt " + pos + " " + nbt);
+                    }
                     Mc.title(t, ">> NUKE!!! <<", "Explodes in 12 secs -- RUN!!", ChatFormatting.GOLD, ChatFormatting.RED);
                     announce(ctx.game(), self, "Summoned the Oppenheimer nuclear bomb on", t, ChatFormatting.RED);
                 }).build());
@@ -1040,7 +1115,8 @@ public final class ItemRegistry {
                 + " shielded themself from negative items! <<", ChatFormatting.GOLD);
     }
 
-    private static void primeTnt(ServerLevel level, Vec3 p, double dx, double dy, double dz, byte fuse, int power) {
+    /** Spawn a primed TNT at default explosion power (4); higher-power nukes are summoned via command. */
+    private static void primeTnt(ServerLevel level, Vec3 p, double dx, double dy, double dz, byte fuse) {
         var tnt = Mc.summon(level, EntityTypes.TNT, p.x + dx, p.y + dy, p.z + dz);
         if (tnt != null) {
             tnt.setFuse(fuse);
@@ -1098,7 +1174,7 @@ public final class ItemRegistry {
         int[] counter = {0};
         ctx.effects().apply(victim, new ActiveEffect("earthquake", 55 * 20, p -> {
             counter[0]++;
-            p.setYRot(p.getYRot() + (counter[0] % 4 < 2 ? 0.4f : -0.4f));
+            Mc.rotateRelative(p, counter[0] % 4 < 2 ? 0.4f : -0.4f, 0f);
             if (counter[0] % 20 == 0) {
                 BlockPos o = p.blockPosition();
                 Mc.fill(Mc.level(p), o.offset(10, 8, 10), o.offset(-10, -1, -10), Blocks.GRAVEL, FillMode.NATURAL_ONLY);

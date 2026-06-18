@@ -162,6 +162,16 @@ public final class Mc {
         return (ServerLevel) entity.level();
     }
 
+    /**
+     * Nudge a player's look direction and push the new rotation to their client.
+     * This is the equivalent of the datapack's {@code /rotate @s ~dyaw ~dpitch}:
+     * unlike {@code setXRot}/{@code setYRot} (server-side only), it actually moves
+     * the player's camera. Used by the look-down / motion-sickness items.
+     */
+    public static void rotateRelative(ServerPlayer player, float deltaYaw, float deltaPitch) {
+        player.forceSetRotation(deltaYaw, true, deltaPitch, true);
+    }
+
     public static void teleport(ServerPlayer player, double x, double y, double z) {
         teleportTo(player, level(player), x, y, z, player.getYRot(), player.getXRot());
     }
@@ -184,10 +194,62 @@ public final class Mc {
         return summon(level(ref), type, p.x + dx, p.y + dy, p.z + dz);
     }
 
+    /**
+     * Summon at a horizontal offset, but nudge the spawn to a vertical gap with
+     * head-room so the mob doesn't immediately suffocate inside terrain/walls.
+     * Searches near the reference's feet level (out to ±6 blocks) for two stacked
+     * non-suffocating blocks. Used for the Viet Cong ambush, which previously
+     * spawned husks straight into hillsides.
+     */
+    public static <T extends Entity> T summonRelSafe(Entity ref, EntityType<T> type, double dx, double dz) {
+        ServerLevel level = level(ref);
+        Vec3 p = ref.position();
+        double x = p.x + dx, z = p.z + dz;
+        int baseY = (int) Math.floor(p.y);
+        int[] order = {0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6};
+        BlockPos.MutableBlockPos cur = new BlockPos.MutableBlockPos();
+        for (int dy : order) {
+            int y = baseY + dy;
+            cur.set((int) Math.floor(x), y, (int) Math.floor(z));
+            boolean feetClear = !level.getBlockState(cur).isSuffocating(level, cur);
+            cur.setY(y + 1);
+            boolean headClear = !level.getBlockState(cur).isSuffocating(level, cur);
+            if (feetClear && headClear) {
+                return summon(level, type, x, y, z);
+            }
+        }
+        return summon(level, type, x, baseY, z);
+    }
+
     // ---- world: blocks ----
 
     public static void setBlock(ServerLevel level, BlockPos pos, Block block) {
         level.setBlockAndUpdate(pos, block.defaultBlockState());
+    }
+
+    /**
+     * Place a block without triggering neighbour/observer updates. Used for the
+     * per-tick bedrock trail, where a full update each tick is what makes it lag.
+     */
+    public static void setBlockFast(ServerLevel level, BlockPos pos, Block block) {
+        level.setBlock(pos, block.defaultBlockState(),
+                net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
+    }
+
+    /** Place a chest and drop a single stack into it (e.g. a prison escape kit). */
+    public static void placeChestWithItem(ServerLevel level, BlockPos pos, ItemStack stack) {
+        level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState());
+        if (level.getBlockEntity(pos) instanceof net.minecraft.world.Container container
+                && container.getContainerSize() > 0) {
+            container.setItem(0, stack);
+        }
+    }
+
+    /** Spawn coloured dust particles, visible to nearby players (forcefield, etc.). */
+    public static void dust(ServerLevel level, double x, double y, double z, int rgb, float scale,
+                            int count, double spreadX, double spreadY, double spreadZ) {
+        level.sendParticles(new net.minecraft.core.particles.DustParticleOptions(rgb, scale),
+                x, y, z, count, spreadX, spreadY, spreadZ, 0.0);
     }
 
     /** Fill the inclusive box between two corners with {@code block}, honouring {@code mode}. */

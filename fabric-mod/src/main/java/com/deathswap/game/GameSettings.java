@@ -32,13 +32,13 @@ public final class GameSettings {
     public int swapIntervalSeconds = 120;
 
     /** When true, swap intervals are randomized between 30s and 4m59s. */
-    public boolean randomCycle = false;
+    public boolean randomCycle = true;
 
-    public boolean pvp = false;
+    public boolean pvp = true;
     public boolean hunger = true;
-    public boolean showSwapTimer = false;
-    public boolean startWithBasicTools = false;
-    public boolean keepInventory = false;
+    public boolean showSwapTimer = true;
+    public boolean startWithBasicTools = true;
+    public boolean keepInventory = true;
     public boolean naturalRegen = true;
 
     public SwapWarning swapWarning = SwapWarning.TEN_SECONDS;

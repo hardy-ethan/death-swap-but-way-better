@@ -162,9 +162,10 @@ public final class GameManager {
             }
         }
 
-        // Item offer clock.
+        // Item offer clock. The datapack hands items to ONE player per interval,
+        // round-robin, not to everyone at once.
         if (--itemTicksRemaining <= 0) {
-            items.offerToAll();
+            items.offerNext();
             itemTicksRemaining = itemOfferIntervalTicks();
         }
 
@@ -253,6 +254,7 @@ public final class GameManager {
             player.setGameMode(GameType.SURVIVAL);
             player.setHealth(player.getMaxHealth());
             player.getInventory().clearContent();
+            player.getEnderChestInventory().clearContent(); // don't carry stashes between rounds
             if (settings.startWithBasicTools) {
                 giveStarterKit(player);
             }
@@ -319,6 +321,11 @@ public final class GameManager {
             Location dest = locations.get((i + 1) % alive.size());
             dest.apply(player);
             player.fallDistance = 0.0f; // disable swap fall damage (gamerule toggle in datapack)
+            // Restore health and hunger on every swap, so you arrive at your new
+            // (potentially booby-trapped) spot on a clean slate.
+            player.setHealth(player.getMaxHealth());
+            player.getFoodData().setFoodLevel(20);
+            player.getFoodData().setSaturation(5.0f);
             Mc.effect(player, MobEffects.SLOW_FALLING, 3, 0);
             Mc.title(player, ">> Swapped! <<", "", ChatFormatting.GOLD, ChatFormatting.WHITE);
             Mc.playSound(player, SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
@@ -381,6 +388,9 @@ public final class GameManager {
             eliminate(player);
         } else {
             survive(player);
+            // Relocate the player far away so they don't respawn right back inside
+            // whatever (trap, mob horde, lava) just killed them.
+            spreadFarAway(player, true);
             Mc.title(player, ">> You died! <<", "-1 life (" + data.lives + " left)",
                     ChatFormatting.RED, ChatFormatting.GOLD);
             broadcast(player.getName().getString() + " died and lost a life! ("
@@ -622,7 +632,8 @@ public final class GameManager {
             case 4 -> 11;
             case 5 -> 9;
             case 6 -> 7;
-            case 7, 8, 9 -> 5;
+            case 7 -> 6;
+            case 8, 9 -> 5;
             default -> 4;
         };
         return seconds * 20;
