@@ -53,6 +53,8 @@ public final class GameManager {
     private int startingPlayerCount;
     /** Tracks which swap-warning thresholds have already fired this cycle. */
     private int lastWarnSecondAnnounced = -1;
+    /** Whether the world was last set to night by item 66. */
+    private boolean isNight = false;
 
     public GameManager() {
         this.items = new ItemManager(this);
@@ -296,6 +298,33 @@ public final class GameManager {
             Mc.playSound(player, SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
             data(player).canTpAway = true; // restore the emergency teleport each cycle
         }
+    }
+
+    /** Item 5: swap everyone almost immediately without resetting the cycle timer. */
+    public void instantSwap() {
+        schedule(4, this::doSwap);
+    }
+
+    /** Item 47: cut 30s off the current cycle and shorten the configured interval. */
+    public void shortenSwapTimer(int seconds) {
+        swapTicksRemaining = Math.max(20, swapTicksRemaining - seconds * 20);
+        settings.swapIntervalSeconds = Math.max(30, settings.swapIntervalSeconds - seconds);
+    }
+
+    /** Item 66: toggle the overworld between midnight and noon. */
+    public void toggleTime() {
+        isNight = !isNight;
+        Mc.runServer(server, isNight ? "time set midnight" : "time set noon");
+    }
+
+    public boolean isNight() {
+        return isNight;
+    }
+
+    /** Item 72: switch the game language between English and Chinese. */
+    public void toggleLanguage() {
+        settings.language = settings.language == GameSettings.Language.ENGLISH
+                ? GameSettings.Language.CHINESE : GameSettings.Language.ENGLISH;
     }
 
     // ---- death / elimination (game/player_died, player_eliminated) ----

@@ -15,7 +15,7 @@ extensible powerful-items framework.
 | Fabric Loom | 1.17-SNAPSHOT |
 | Gradle | 9.5.1 |
 | Java | 25 |
-| Mappings | Official Mojang mappings (Yarn was retired after 1.21.11) |
+| Mappings | None — MC 26.1+ ships unobfuscated (non-remapping `net.fabricmc.fabric-loom`) |
 
 ## Building
 

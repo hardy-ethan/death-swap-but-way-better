@@ -1,7 +1,6 @@
 package com.deathswap.items;
 
 import com.deathswap.game.GameManager;
-import com.deathswap.game.GameSettings;
 import com.deathswap.game.PlayerData;
 import com.deathswap.util.Mc;
 import net.minecraft.ChatFormatting;
@@ -13,13 +12,12 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemLore;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -32,10 +30,6 @@ public final class ItemManager {
 
     private static final String NBT_ITEM_ID = "ds_item_id";
     private static final int[] HOTBAR_SLOTS = {6, 7, 8};
-    // Dyes moved into the Items.DYE ColorCollection in 26.x; light_blue/lime/pink by index.
-    private static final Item[] DYE_BY_SLOT = {
-            Items.DYE.asList().get(3), Items.DYE.asList().get(5), Items.DYE.asList().get(6)
-    };
 
     private final GameManager game;
     private final ItemRegistry registry = new ItemRegistry();
@@ -62,7 +56,7 @@ public final class ItemManager {
 
     public void offer(ServerPlayer player) {
         PlayerData data = game.data(player);
-        List<DeathSwapItem> picks = registry.pickThree(player, game.settings(), player.getRandom().nextLong());
+        List<DeathSwapItem> picks = registry.pickThree(player, player.getRandom().nextLong());
         if (picks.size() < 3) {
             return;
         }
@@ -71,18 +65,21 @@ public final class ItemManager {
         data.pendingTargetItem = null;
 
         for (int i = 0; i < HOTBAR_SLOTS.length; i++) {
-            player.getInventory().setItem(HOTBAR_SLOTS[i], buildDye(picks.get(i), i, game.settings()));
+            player.getInventory().setItem(HOTBAR_SLOTS[i], buildDye(picks.get(i)));
         }
         Mc.title(player, " ", ">> New items! <<", ChatFormatting.WHITE, ChatFormatting.GREEN);
-        Mc.msg(player, "<< You got 3 new items! Drop one from your hotbar to use it. >>",
-                ChatFormatting.GREEN);
-        Mc.playSound(player, SoundEvents.ITEM_PICKUP, 1.0f, 1.0f);
+        Mc.msg(player, "<< You got a new set of items! They will expire in 45 seconds if "
+                + "you don't use one of them! You can only use one! >>", ChatFormatting.GREEN);
+        Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
     }
 
-    private ItemStack buildDye(DeathSwapItem item, int slot, GameSettings settings) {
-        ItemStack stack = new ItemStack(DYE_BY_SLOT[slot % DYE_BY_SLOT.length]);
+    /** Build the dyed display item exactly as the datapack's items/items/* do. */
+    private ItemStack buildDye(DeathSwapItem item) {
+        ItemStack stack = new ItemStack(Items.DYE.asList().get(item.dye.ordinal()));
         stack.set(DataComponents.CUSTOM_NAME,
-                Component.literal(item.displayName(settings)).withStyle(ChatFormatting.AQUA));
+                Component.literal(item.name).withStyle(item.nameColor).withStyle(s -> s.withItalic(false)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal(item.lore).withStyle(ChatFormatting.GRAY))));
         stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         CompoundTag tag = new CompoundTag();
         tag.putInt(NBT_ITEM_ID, item.id);
@@ -174,9 +171,9 @@ public final class ItemManager {
     // ---- targeting (opponent items) ----
 
     private void promptForTarget(ServerPlayer player, DeathSwapItem item) {
-        Mc.msg(player, Component.literal("\n>> Click the player to hit with: ")
+        Mc.msg(player, Component.literal("\n>> Click on which player you want to use this item on: ")
                 .withStyle(ChatFormatting.YELLOW)
-                .append(Component.literal(item.displayName(game.settings())).withStyle(ChatFormatting.AQUA)));
+                .append(Component.literal(item.name).withStyle(ChatFormatting.AQUA)));
         MutableComponent line = Component.literal("");
         boolean any = false;
         for (ServerPlayer opponent : game.alivePlayers()) {

@@ -34,51 +34,62 @@ ported, what is approximated, and which call sites are most version-sensitive.
 - The full item lifecycle: 3-item offer, drop-to-select detection, self /
   opponent / all-others / random / everyone targeting, shield gating, and
   timer-based effect cleanup.
-- A representative catalogue (~50 of the datapack's 110 items) spanning every
-  category: self-buffs, shields, opponent debuffs (attributes/effects), summons,
-  world manipulation (fills/explosions/fire/portals), and utility/chaos items.
+- All 110 items (see the item-coverage section below).
 
-## Approximated or simplified
+## Item coverage
 
-- **Hub/lobby**: the datapack ships a hand-built superflat hub with physical
-  buttons. A mod can't carry that world build, so the lobby is modelled as a
-  *state* (adventure mode at world spawn) driven by commands instead of buttons.
-- **Spread radius**: the datapack uses up to 29,999,000 blocks, which is brutal
-  on world-gen. `GameManager.SPREAD_MAX` defaults to 250,000 for playability —
-  raise it for full fidelity.
-- **Item interval / count scaling** follows the datapack's player-count table
-  but item *durations* are expressed in plain server ticks rather than the
-  datapack's 1/100-second scoreboard units.
-- A few items are behavioural stand-ins where a faithful version needs a
-  dedicated mixin (e.g. "block crafting/smelting", curse-of-binding armour).
+**All 110 items are implemented** in `ItemRegistry`, each reproducing the
+observable effect of its `items/use/<n>` function and the dyed hotbar display
+(colour + name + lore) of its `items/items/*` definition. Item durations are
+taken straight from the datapack scoreboards (an effect score N lasts N/100s).
+Multi-tick effects (bedrock trail, motion sickness, spawn-over-time hordes,
+nether-world conversion, earthquake, forcefield, ears-bleed, no-craft, jumpscare,
+spying, …) run through `EffectManager`/`ActiveEffect`.
+
+### Approximated where a 1:1 port is impractical
+
+- **Structure items** (53 village, 54 desert pyramid, 82 amethyst geode,
+  93 stronghold, 101 trial chamber, 102 mansion, 108 ancient city) place the
+  real structure via the vanilla `/place` command through `Mc.runAt(...)` rather
+  than reimplementing jigsaw generation. The decorative ladder/sign shafts the
+  datapack adds are omitted.
+- **Time / difficulty / game-rules** (66, 72-75, 79, 83) use the difficulty &
+  game-rule APIs directly, with `time set` via the command dispatcher.
+- **Item 78 "crash someone's game"**: we deliberately do **not** crash a client.
+  It reproduces the in-game warning plus heavy nausea/blindness instead.
+- **Superflat (76)** and **Parkour Civilization (95)** are approximated (spread +
+  grass platform / a quartz cell) since neither ships its custom world here.
+- **`fillbiome`** biome repaints (nether-world, peeing puddle) are skipped — only
+  the block changes are reproduced.
+- **Hub/lobby**: modelled as a *state* (adventure at world spawn) driven by
+  `/deathswap` commands rather than the datapack's hand-built button hub.
+- **Spread radius**: capped at `GameManager.SPREAD_MAX` (250,000) instead of
+  29,999,000 for world-gen sanity — raise it for full fidelity.
 
 ## Not yet ported
 
-- The remaining ~60 item IDs. They slot directly into `ItemRegistry` using the
-  existing `DeathSwapItem.builder(...)` pattern — add the effect lambda and it is
-  automatically included in the 3-item offer pool.
-- Bilingual UI for every string (item *names* carry EN + 中文; broadcast/title
-  text is currently English only).
-- Cosmetic structure-spawn items (woodland mansion, trial chamber, ancient city)
-  — easy to add with `StructureTemplate`/`/place`-equivalent calls.
+- Bilingual UI: item *names* are stored, but in-game broadcast/title text and the
+  Chinese item names are English-only for now (item 72 still flips the flag).
 
-## Version-sensitive call sites (verify against 26.2 mappings)
+## 26.2 mapping notes
 
-All vanilla interaction is funnelled through `util/Mc.java` to make porting
-mechanical. The calls most likely to need a tweak on the exact 26.2 mappings:
+The mod **compiles and builds against Minecraft 26.2** (verified with
+`gradle build`). 26.x ships unobfuscated, so there is no `mappings` line and the
+non-remapping `net.fabricmc.fabric-loom` plugin is used. Most vanilla interaction
+is funnelled through `util/Mc.java`. Notable renames/relocations encountered
+versus the older Mojang names (useful when porting further):
 
-1. **`Mc.teleportTo`** — `ServerPlayer.teleportTo(ServerLevel, x, y, z, yaw, pitch)`.
-   Recent versions are migrating to `Entity.teleport(TeleportTransition)`. If the
-   convenience overload is gone, reimplement this one method.
-2. **`Mc.title`** — `ClientboundSetTitleTextPacket` / `ClientboundSetSubtitleTextPacket`.
-3. **`ClickEvent.RunCommand`** (in `ItemManager`) — the record-style click event
-   API introduced around 1.21.6.
-4. **NBT** — `CompoundTag.getIntOr(key, default)`, the Optional-based accessor.
-5. **`EntityType.spawn(ServerLevel, BlockPos, EntitySpawnReason)`** — `EntitySpawnReason`
-   replaced `MobSpawnType`.
-6. **`MobEffects` / `Attributes` constants** are `Holder<…>` references.
-
-Because this environment has no Minecraft 26.2 artifacts, the project could not
-be compiled here; the code targets the documented 26.2 / Mojang-mappings API
-surface. Run `./gradlew build` against the real toolchain to surface any
-remaining mapping mismatches (expected to be localized to `Mc.java`).
+- `ServerPlayer.serverLevel()` → use `(ServerLevel) entity.level()` (`Mc.level`).
+- `ServerPlayer.teleportTo(...)` now takes `Set<Relative>` + a boolean.
+- `net.minecraft.resources.ResourceLocation` → `net.minecraft.resources.Identifier`.
+- `GameRules` moved to `net.minecraft.world.level.gamerules`; rules are
+  `GameRule<T>` with `rules.get(rule)` / `rules.set(rule, val, server)`, and
+  `KEEP_INVENTORY` / `NATURAL_HEALTH_REGENERATION` constants.
+- Entity-type constants moved from `EntityType` to `EntityTypes`.
+- `MobEffects`: `MOVEMENT_SPEED`→`SPEED`, `JUMP`→`JUMP_BOOST`,
+  `DAMAGE_RESISTANCE`→`RESISTANCE` (all `Holder<MobEffect>`).
+- Dyes & concrete moved into `Items.DYE` / `Items.CONCRETE` `ColorCollection`s
+  (`Items.DYE.asList().get(dyeColor.ordinal())`).
+- `Slime` is now `net.minecraft.world.entity.monster.cubemob.Slime`.
+- NBT uses the Optional-based API (`CompoundTag.getIntOr(key, default)`).
+- `Potions.*` are `Holder<Potion>`; `DataComponents.UNBREAKABLE` is `Unit`.
