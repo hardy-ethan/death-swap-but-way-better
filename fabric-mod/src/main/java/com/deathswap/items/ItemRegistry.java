@@ -679,6 +679,10 @@ public final class ItemRegistry {
                                     999999.0, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
                             .build();
                     sword.set(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, mods);
+                    // Irreparable: no material can repair it in an anvil.
+                    sword.set(net.minecraft.core.component.DataComponents.REPAIRABLE,
+                            new net.minecraft.world.item.enchantment.Repairable(
+                                    net.minecraft.core.HolderSet.empty()));
                     Mc.giveStack(self, sword);
                 }).build());
 
