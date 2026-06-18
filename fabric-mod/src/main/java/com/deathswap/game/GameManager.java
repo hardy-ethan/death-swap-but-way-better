@@ -39,6 +39,7 @@ public final class GameManager {
 
     private final GameSettings settings = new GameSettings();
     private final EffectManager effects = new EffectManager();
+    private final ScoreboardDisplay scoreboard = new ScoreboardDisplay();
     private final ItemManager items;
     private final Map<UUID, PlayerData> playerData = new HashMap<>();
     private final List<Scheduled> scheduled = new ArrayList<>();
@@ -55,6 +56,8 @@ public final class GameManager {
     private int lastWarnSecondAnnounced = -1;
     /** Whether the world was last set to night by item 66. */
     private boolean isNight = false;
+    /** Cached dry lobby column near the origin, resolved on first use. */
+    private net.minecraft.core.BlockPos hubSpawn;
 
     public GameManager() {
         this.items = new ItemManager(this);
@@ -113,6 +116,7 @@ public final class GameManager {
     public void onPlayerLeave(ServerPlayer player) {
         // Keep their PlayerData so wins persist if they reconnect this session.
         if (phase == GamePhase.RUNNING) {
+            scoreboard.removePlayer(player);
             checkWinCondition();
         }
     }
@@ -261,6 +265,8 @@ public final class GameManager {
         assignPermanentNumbers(participants);
 
         phase = GamePhase.RUNNING;
+        scoreboard.start(server);
+        updateSidebar();
         // First swap is always 3 minutes, regardless of cycle settings.
         swapTicksRemaining = 180 * 20;
         lastWarnSecondAnnounced = -1;
@@ -380,6 +386,7 @@ public final class GameManager {
             broadcast(player.getName().getString() + " died and lost a life! ("
                     + data.lives + " left)", ChatFormatting.RED);
         }
+        updateSidebar();
         return false; // we always handle death ourselves
     }
 
@@ -459,6 +466,7 @@ public final class GameManager {
 
     private void returnEveryoneToHub() {
         phase = GamePhase.HUB;
+        scoreboard.stop();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
         }
@@ -467,6 +475,22 @@ public final class GameManager {
     }
 
     // ---- helpers ----
+
+    /**
+     * Refresh the lives sidebar. Shows every player taking part in the current
+     * game — those still alive and those already eliminated (at 0 lives) — but
+     * not late-joining spectators.
+     */
+    private void updateSidebar() {
+        List<ServerPlayer> participants = new ArrayList<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PlayerData data = data(player);
+            if (data.playing || data.eliminated) {
+                participants.add(player);
+            }
+        }
+        scoreboard.updateLives(participants, p -> data(p).lives);
+    }
 
     public List<ServerPlayer> alivePlayers() {
         List<ServerPlayer> alive = new ArrayList<>();
@@ -541,13 +565,42 @@ public final class GameManager {
 
     private void teleportToWorldSpawn(ServerPlayer player) {
         // The lobby isn't a built map (unlike the datapack's superflat hub), so we
-        // just gather everyone at the overworld origin column.
+        // gather everyone at one dry surface column near the overworld origin.
         ServerLevel level = server.overworld();
-        // Force the origin chunk to generate before sampling the heightmap; on an
-        // ungenerated chunk getHeight() returns the world minimum (the void).
+        if (hubSpawn == null) {
+            hubSpawn = findDryHubColumn(level);
+        }
+        Mc.teleportTo(player, level, hubSpawn.getX() + 0.5, hubSpawn.getY(), hubSpawn.getZ() + 0.5,
+                player.getYRot(), player.getXRot());
+    }
+
+    /**
+     * Find a dry surface column near the origin for the lobby. Scans outward in a
+     * square spiral so everyone gathers on land rather than bobbing in an ocean.
+     * Falls back to the origin column if nothing dry is found within range.
+     */
+    private net.minecraft.core.BlockPos findDryHubColumn(ServerLevel level) {
+        for (int radius = 0; radius <= 64; radius += 8) {
+            for (int dx = -radius; dx <= radius; dx += 8) {
+                for (int dz = -radius; dz <= radius; dz += 8) {
+                    // Only inspect the ring at this radius; inner rings were checked already.
+                    if (radius > 0 && Math.abs(dx) != radius && Math.abs(dz) != radius) {
+                        continue;
+                    }
+                    // Force the chunk to generate before sampling the heightmap; on an
+                    // ungenerated chunk getHeight() returns the world minimum (the void).
+                    level.getChunk(dx >> 4, dz >> 4);
+                    int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, dx, dz);
+                    net.minecraft.core.BlockPos feet = new net.minecraft.core.BlockPos(dx, y, dz);
+                    if (level.getFluidState(feet.below()).isEmpty()
+                            && level.getFluidState(feet).isEmpty()) {
+                        return feet;
+                    }
+                }
+            }
+        }
         level.getChunk(0, 0);
-        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0);
-        Mc.teleportTo(player, level, 0.5, y, 0.5, player.getYRot(), player.getXRot());
+        return new net.minecraft.core.BlockPos(0, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0), 0);
     }
 
     private void giveStarterKit(ServerPlayer player) {
