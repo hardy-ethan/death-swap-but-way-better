@@ -468,6 +468,11 @@ public final class GameManager {
         double radius = SPREAD_MIN + random.nextDouble() * (SPREAD_MAX - SPREAD_MIN);
         int x = (int) (Math.cos(angle) * radius);
         int z = (int) (Math.sin(angle) * radius);
+        // Force the destination chunk to generate before sampling the heightmap.
+        // Far-away chunks aren't loaded yet, and getHeight() on an ungenerated
+        // chunk returns the world's minimum build height (the void), which would
+        // drop the player into the void to their death.
+        level.getChunk(x >> 4, z >> 4);
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         Mc.teleportTo(player, level, x + 0.5, y, z + 0.5, player.getYRot(), player.getXRot());
     }
