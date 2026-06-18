@@ -4,7 +4,6 @@ import com.deathswap.effects.EffectManager;
 import com.deathswap.items.ItemManager;
 import com.deathswap.util.Mc;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -339,7 +338,7 @@ public final class GameManager {
         player.setHealth(player.getMaxHealth());
         player.clearFire();
         player.fallDistance = 0.0f;
-        Mc.effect(player, MobEffects.DAMAGE_RESISTANCE, 10, 4);
+        Mc.effect(player, MobEffects.RESISTANCE, 10, 4);
         player.getFoodData().setFoodLevel(20);
     }
 
@@ -375,7 +374,7 @@ public final class GameManager {
             data.winner = true;
             data.wins++;
             Mc.give(winner, net.minecraft.world.item.Items.TOTEM_OF_UNDYING, 1);
-            Mc.effect(winner, MobEffects.DAMAGE_RESISTANCE, 20, 4);
+            Mc.effect(winner, MobEffects.RESISTANCE, 20, 4);
             Mc.effect(winner, MobEffects.GLOWING, 6, 0);
             broadcast(">>> " + winner.getName().getString()
                     + " survived the longest and won the game! <<<", ChatFormatting.GREEN);
@@ -445,10 +444,11 @@ public final class GameManager {
     }
 
     private void teleportToWorldSpawn(ServerPlayer player) {
+        // The lobby isn't a built map (unlike the datapack's superflat hub), so we
+        // just gather everyone at the overworld origin column.
         ServerLevel level = server.overworld();
-        BlockPos spawn = level.getSharedSpawnPos();
-        Mc.teleportTo(player, level, spawn.getX() + 0.5, spawn.getY(), spawn.getZ() + 0.5,
-                player.getYRot(), player.getXRot());
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0);
+        Mc.teleportTo(player, level, 0.5, y, 0.5, player.getYRot(), player.getXRot());
     }
 
     private void giveBasicTools(ServerPlayer player) {
@@ -512,7 +512,7 @@ public final class GameManager {
     private record Location(ServerLevel level, double x, double y, double z, float yRot, float xRot) {
         static Location of(ServerPlayer player) {
             Vec3 p = player.position();
-            return new Location(player.serverLevel(), p.x, p.y, p.z, player.getYRot(), player.getXRot());
+            return new Location(Mc.level(player), p.x, p.y, p.z, player.getYRot(), player.getXRot());
         }
 
         void apply(ServerPlayer player) {

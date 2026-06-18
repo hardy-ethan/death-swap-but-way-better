@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.Items;
@@ -75,7 +76,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.builder(1, "Speed Billion").chinese("十亿速度")
                 .target(ItemTarget.SELF)
                 .effect((ctx, self, t) -> {
-                    Mc.effect(self, MobEffects.MOVEMENT_SPEED, 40, 4);
+                    Mc.effect(self, MobEffects.SPEED, 40, 4);
                     Mc.setAttribute(self, Attributes.MOVEMENT_SPEED, 0.9);
                     ctx.effects().apply(self, new ActiveEffect("mega_speed", 40 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.MOVEMENT_SPEED, 0.1)));
@@ -206,7 +207,7 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> ctx.effects().apply(target,
                         new ActiveEffect("bedrock_trail", 120 * 20,
-                                p -> Mc.setBlock(p.serverLevel(), p.blockPosition().below(), Blocks.BEDROCK),
+                                p -> Mc.setBlock(Mc.level(p), p.blockPosition().below(), Blocks.BEDROCK),
                                 null))).build());
 
         add(DeathSwapItem.builder(33, "Can't Interact").chinese("无法交互")
@@ -239,7 +240,7 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
                     Mc.setAttribute(target, Attributes.SCALE, 10.0);
-                    Mc.effect(target, MobEffects.JUMP, 50, 2);
+                    Mc.effect(target, MobEffects.JUMP_BOOST, 50, 2);
                     ctx.effects().apply(target, new ActiveEffect("huge_scale", 50 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.SCALE, 1.0)));
                 }).build());
@@ -281,22 +282,22 @@ public final class ItemRegistry {
     private void registerSummons() {
         add(DeathSwapItem.builder(8, "30 Villagers").chinese("30村民")
                 .target(ItemTarget.OPPONENT)
-                .effect((ctx, self, target) -> summonRing(target, EntityType.VILLAGER, 30)).build());
+                .effect((ctx, self, target) -> summonRing(target, EntityTypes.VILLAGER, 30)).build());
 
         add(DeathSwapItem.builder(36, "Bee Horde").chinese("蜜蜂群")
                 .target(ItemTarget.OPPONENT)
-                .effect((ctx, self, target) -> summonRing(target, EntityType.BEE, 25)).build());
+                .effect((ctx, self, target) -> summonRing(target, EntityTypes.BEE, 25)).build());
 
         add(DeathSwapItem.builder(59, "Ghast Bombardment").chinese("恶魂轰炸")
                 .target(ItemTarget.OPPONENT)
-                .effect((ctx, self, target) -> summonRing(target, EntityType.GHAST, 8)).build());
+                .effect((ctx, self, target) -> summonRing(target, EntityTypes.GHAST, 8)).build());
 
         add(DeathSwapItem.builder(67, "Giant Slime").chinese("巨型史莱姆")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
-                    Entity e = Mc.summon(target.serverLevel(), EntityType.SLIME,
+                    Entity e = Mc.summon(Mc.level(target), EntityTypes.SLIME,
                             target.getX() + 4, target.getY() + 6, target.getZ() + 2);
-                    if (e instanceof net.minecraft.world.entity.monster.Slime slime) {
+                    if (e instanceof net.minecraft.world.entity.monster.cubemob.Slime slime) {
                         slime.setSize(8, true);
                     }
                 }).build());
@@ -304,7 +305,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.builder(100, "Giant Zombie").chinese("巨型僵尸")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
-                    Entity e = Mc.summon(target.serverLevel(), EntityType.ZOMBIE,
+                    Entity e = Mc.summon(Mc.level(target), EntityTypes.ZOMBIE,
                             target.getX(), target.getY() + 3, target.getZ());
                     if (e instanceof LivingEntity living && living.getAttribute(Attributes.SCALE) != null) {
                         living.getAttribute(Attributes.SCALE).setBaseValue(12.0);
@@ -316,7 +317,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.builder(105, "Summon the Warden").chinese("召唤监守者")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
-                    Entity warden = Mc.summon(target.serverLevel(), EntityType.WARDEN,
+                    Entity warden = Mc.summon(Mc.level(target), EntityTypes.WARDEN,
                             target.getX(), target.getY(), target.getZ() + 2);
                     if (warden instanceof net.minecraft.world.entity.Mob mob) {
                         mob.setPersistenceRequired();
@@ -325,12 +326,12 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.builder(110, "30 Endermen").chinese("30末影人")
                 .target(ItemTarget.OPPONENT)
-                .effect((ctx, self, target) -> summonRing(target, EntityType.ENDERMAN, 30)).build());
+                .effect((ctx, self, target) -> summonRing(target, EntityTypes.ENDERMAN, 30)).build());
 
         add(DeathSwapItem.builder(40, "Lightning Strike").chinese("雷击")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
-                    Mc.summon(target.serverLevel(), EntityType.LIGHTNING_BOLT,
+                    Mc.summon(Mc.level(target), EntityTypes.LIGHTNING_BOLT,
                             target.getX(), target.getY(), target.getZ());
                 }).build());
 
@@ -339,7 +340,7 @@ public final class ItemRegistry {
     }
 
     private void summonRing(ServerPlayer target, EntityType<?> type, int count) {
-        ServerLevel level = target.serverLevel();
+        ServerLevel level = Mc.level(target);
         Vec3 c = target.position();
         for (int i = 0; i < count; i++) {
             double angle = (Math.PI * 2 / count) * i;
@@ -354,30 +355,30 @@ public final class ItemRegistry {
     private void registerWorldEffects() {
         add(DeathSwapItem.builder(15, "7x7 Air Cube").chinese("7x7空气方块")
                 .target(ItemTarget.OPPONENT)
-                .effect((ctx, self, target) -> Mc.fillBox(target.serverLevel(),
+                .effect((ctx, self, target) -> Mc.fillBox(Mc.level(target),
                         target.blockPosition(), 3, 3, 3, Blocks.AIR, true)).build());
 
         add(DeathSwapItem.builder(22, "Turn Surroundings to Stone").chinese("石化周围")
                 .target(ItemTarget.OPPONENT)
-                .effect((ctx, self, target) -> Mc.fillBox(target.serverLevel(),
+                .effect((ctx, self, target) -> Mc.fillBox(Mc.level(target),
                         target.blockPosition(), 10, 5, 10, Blocks.STONE, true)).build());
 
         add(DeathSwapItem.builder(35, "Lava Ceiling").chinese("熔岩天花板")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
                     BlockPos above = target.blockPosition().above(8);
-                    Mc.fillBox(target.serverLevel(), above, 12, 0, 12, Blocks.LAVA, false);
+                    Mc.fillBox(Mc.level(target), above, 12, 0, 12, Blocks.LAVA, false);
                 }).build());
 
         add(DeathSwapItem.builder(42, "Flood with Water").chinese("水淹")
                 .target(ItemTarget.OPPONENT)
-                .effect((ctx, self, target) -> Mc.fillBox(target.serverLevel(),
+                .effect((ctx, self, target) -> Mc.fillBox(Mc.level(target),
                         target.blockPosition().above(2), 8, 6, 8, Blocks.WATER, true)).build());
 
         add(DeathSwapItem.builder(20, "Barrier Cage").chinese("屏障笼")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
-                    ServerLevel level = target.serverLevel();
+                    ServerLevel level = Mc.level(target);
                     BlockPos p = target.blockPosition();
                     // Hollow box: fill the shell only.
                     int r = 3;
@@ -396,7 +397,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.builder(61, "Prison").chinese("监狱")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
-                    ServerLevel level = target.serverLevel();
+                    ServerLevel level = Mc.level(target);
                     BlockPos p = target.blockPosition();
                     Mc.fillBox(level, p.below(1), 5, 0, 4, Blocks.BEDROCK, false);   // floor
                     Mc.fillBox(level, p.above(3), 5, 0, 4, Blocks.BEDROCK, false);   // ceiling
@@ -412,7 +413,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.builder(109, "Everything on Fire").chinese("一切燃烧")
                 .target(ItemTarget.OPPONENT)
                 .effect((ctx, self, target) -> {
-                    ServerLevel level = target.serverLevel();
+                    ServerLevel level = Mc.level(target);
                     BlockPos p = target.blockPosition();
                     for (int dx = -8; dx <= 8; dx++) {
                         for (int dz = -8; dz <= 8; dz++) {
@@ -427,7 +428,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.builder(12, "Nether Portal").chinese("下界传送门")
                 .effect((ctx, self, t) -> {
-                    ServerLevel level = self.serverLevel();
+                    ServerLevel level = Mc.level(self);
                     BlockPos base = self.blockPosition().offset(2, 0, 0);
                     for (int y = 0; y <= 4; y++) {
                         for (int z = 0; z <= 3; z++) {
@@ -453,12 +454,11 @@ public final class ItemRegistry {
                 .target(ItemTarget.EVERYONE)
                 .effect((ctx, self, t) -> ctx.game().schedule(4, ctx.game()::doSwap)).build());
 
-        add(DeathSwapItem.builder(66, "Toggle Day/Night").chinese("昼夜切换")
+        add(DeathSwapItem.builder(66, "Darkness for Everyone").chinese("全员黑暗")
                 .target(ItemTarget.EVERYONE)
-                .effect((ctx, self, t) -> {
-                    ServerLevel level = ctx.server().overworld();
-                    long time = level.getDayTime() % 24000;
-                    level.setDayTime(time < 12000 ? 18000 : 6000);
+                .effect((ctx, self, target) -> {
+                    Mc.effect(target, MobEffects.DARKNESS, 30, 0);
+                    Mc.effect(target, MobEffects.BLINDNESS, 10, 0);
                 }).build());
 
         add(DeathSwapItem.builder(81, "Scatter Everyone Else").chinese("驱散其他人")

@@ -1,5 +1,7 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
+	// 26.1+ uses the new non-remapping Loom plugin. The legacy 'fabric-loom'
+	// plugin tries to remap Minecraft and fails on the now-unobfuscated game.
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
 }
 
@@ -20,8 +22,9 @@ dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-	// Minecraft 26.1+ uses the official Mojang mappings. Yarn was discontinued after 1.21.11.
-	mappings loom.officialMojangMappings()
+	// No mappings: Minecraft 26.1+ ships unobfuscated (with parameter names), so
+	// there is nothing to remap. Declaring loom.officialMojangMappings() here
+	// fails with "Failed to find official mojang mappings for <version>".
 
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 

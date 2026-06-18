@@ -32,7 +32,10 @@ public final class ItemManager {
 
     private static final String NBT_ITEM_ID = "ds_item_id";
     private static final int[] HOTBAR_SLOTS = {6, 7, 8};
-    private static final Item[] DYE_BY_SLOT = {Items.LIGHT_BLUE_DYE, Items.LIME_DYE, Items.PINK_DYE};
+    // Dyes moved into the Items.DYE ColorCollection in 26.x; light_blue/lime/pink by index.
+    private static final Item[] DYE_BY_SLOT = {
+            Items.DYE.asList().get(3), Items.DYE.asList().get(5), Items.DYE.asList().get(6)
+    };
 
     private final GameManager game;
     private final ItemRegistry registry = new ItemRegistry();

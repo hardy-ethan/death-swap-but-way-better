@@ -22,13 +22,13 @@ public final class DeathSwapCommands {
         dispatcher.register(Commands.literal("deathswap")
                 // ---- admin: lobby / flow ----
                 .then(Commands.literal("settings")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> {
                             game.enterSettings();
                             return 1;
                         }))
                 .then(Commands.literal("start")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> {
                             if (game.startGame()) {
                                 return 1;
@@ -37,7 +37,7 @@ public final class DeathSwapCommands {
                             return 0;
                         }))
                 .then(Commands.literal("stop")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> {
                             game.broadcast(">> Game stopped by an operator. <<", ChatFormatting.RED);
                             game.forceReturnToHub();
@@ -45,7 +45,7 @@ public final class DeathSwapCommands {
                         }))
                 // ---- admin: rules ----
                 .then(Commands.literal("set")
-                        .requires(src -> src.hasPermission(2))
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.literal("lives")
                                 .then(Commands.argument("n", IntegerArgumentType.integer(1, 6))
                                         .executes(ctx -> {

@@ -24,6 +24,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Set;
+
 /**
  * Thin wrappers over the vanilla server API. All version-sensitive calls live
  * here so that porting to a new Minecraft mapping only touches one file.
@@ -79,15 +81,20 @@ public final class Mc {
 
     // ---- world ----
 
-    public static void playSound(ServerPlayer player, Holder<SoundEvent> sound, float volume, float pitch) {
-        ServerLevel level = player.serverLevel();
+    /** The server-side level an entity is in. {@code serverLevel()} was removed in 26.x. */
+    public static ServerLevel level(Entity entity) {
+        return (ServerLevel) entity.level();
+    }
+
+    public static void playSound(ServerPlayer player, SoundEvent sound, float volume, float pitch) {
+        ServerLevel level = level(player);
         Vec3 p = player.position();
         level.playSound(null, p.x, p.y, p.z, sound, SoundSource.MASTER, volume, pitch);
     }
 
     /** Teleport within the player's current dimension. */
     public static void teleport(ServerPlayer player, double x, double y, double z) {
-        teleportTo(player, player.serverLevel(), x, y, z, player.getYRot(), player.getXRot());
+        teleportTo(player, level(player), x, y, z, player.getYRot(), player.getXRot());
     }
 
     /**
@@ -96,7 +103,7 @@ public final class Mc {
      */
     public static void teleportTo(ServerPlayer player, ServerLevel level,
                                   double x, double y, double z, float yaw, float pitch) {
-        player.teleportTo(level, x, y, z, yaw, pitch);
+        player.teleportTo(level, x, y, z, Set.of(), yaw, pitch, false);
         player.fallDistance = 0.0f;
     }
 
@@ -129,7 +136,7 @@ public final class Mc {
     }
 
     public static void explode(ServerPlayer at, float radius) {
-        ServerLevel level = at.serverLevel();
+        ServerLevel level = level(at);
         Vec3 p = at.position();
         level.explode(null, p.x, p.y, p.z, radius, Level.ExplosionInteraction.TNT);
     }
