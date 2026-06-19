@@ -474,6 +474,16 @@ public final class GameManager {
         player.setHealth(player.getMaxHealth());
         player.clearFire();
         player.fallDistance = 0.0f;
+        // Death returns the player to their initial spread location (their spawn
+        // point), just as a vanilla death respawns them at the spawn point set in
+        // game_start.mcfunction (spawnpoint @s ~ ~ ~). We emulate the death rather
+        // than letting it run, so teleport them there ourselves.
+        PlayerData data = data(player);
+        if (data.spawnPos != null) {
+            Mc.teleportTo(player, server.overworld(),
+                    data.spawnPos.getX() + 0.5, data.spawnPos.getY(), data.spawnPos.getZ() + 0.5,
+                    data.spawnYaw, player.getXRot());
+        }
         // player_died.mcfunction: effect give @s minecraft:resistance 10 5.
         Mc.effect(player, MobEffects.RESISTANCE, 10, 5);
         player.getFoodData().setFoodLevel(20);
@@ -635,9 +645,15 @@ public final class GameManager {
         Mc.teleportTo(player, level, x + 0.5, y, z + 0.5, player.getYRot(), player.getXRot());
         if (setSpawn) {
             // Give the player their own spawn point at the destination, so a
-            // death/relog returns them here rather than at the world origin.
-            Mc.setSpawn(player, level, new net.minecraft.core.BlockPos(x, y, z),
-                    player.getYRot(), player.getXRot());
+            // death/relog returns them here rather than at the world origin
+            // (datapack: spawnpoint @s ~ ~ ~ in game_start.mcfunction).
+            net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(x, y, z);
+            Mc.setSpawn(player, level, pos, player.getYRot(), player.getXRot());
+            // Remember it so a death sends the player back to this initial spread
+            // location, mirroring the vanilla respawn-at-spawn-point behaviour.
+            PlayerData data = data(player);
+            data.spawnPos = pos;
+            data.spawnYaw = player.getYRot();
         }
     }
 
