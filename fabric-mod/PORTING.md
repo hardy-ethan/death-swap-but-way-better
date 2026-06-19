@@ -70,8 +70,16 @@ spying, …) run through `EffectManager`/`ActiveEffect`.
   iron-bar cell are placed immediately, and the 20 light-wall planes (the ~600k
   position sweep) run as a `GameManager` build job that processes a budget of
   positions per tick, so it never freezes the server.
-- **Superflat (76)** is still spread+grass platform (its `ds:superflat` dimension
-  JSON is now bundled, ready to wire).
+- **Superflat (76)** now teleports the target into the bundled `ds:superflat`
+  dimension (spread up to 29,999,000 like the datapack — cheap because the world
+  is flat).
+- All other one-shot builders are translated exactly natively: end-portal pad
+  (4), nether portal (12), 7×7×7 `air destroy` drop (15), y=-60 pad + torch (16),
+  void hole (17), falling anvils (32), bells (34), lava (35), water (42, already
+  matched), gravel-everyone (46, matched), the obsidian sun ceiling (48 — its
+  353×353 layer spread over ticks), cobwebs (51, matched), the stalagmite trap
+  (86 — both lit tuff segments, ladders and the dripstone tip/frustum), chunk
+  delete (87) and the layered fire field (109).
 - **`fillbiome`** biome repaints (nether-world, peeing puddle) are skipped — only
   the block changes are reproduced.
 - **Hub/lobby**: modelled as a *state* (adventure at world spawn) driven by

@@ -451,6 +451,33 @@ public final class Mc {
         return Blocks.LADDER.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing);
     }
 
+    public static BlockState netherPortal(Direction.Axis axis) {
+        return Blocks.NETHER_PORTAL.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_AXIS, axis);
+    }
+
+    public static BlockState dripstone(net.minecraft.world.level.block.state.properties.DripstoneThickness thickness,
+                                       Direction verticalDirection) {
+        return Blocks.POINTED_DRIPSTONE.defaultBlockState()
+                .setValue(BlockStateProperties.DRIPSTONE_THICKNESS, thickness)
+                .setValue(BlockStateProperties.VERTICAL_DIRECTION, verticalDirection);
+    }
+
+    /** Break every block in the box, dropping its items (native {@code fill ... air destroy}). */
+    public static void destroyBox(ServerLevel level, BlockPos c1, BlockPos c2) {
+        int minX = Math.min(c1.getX(), c2.getX()), maxX = Math.max(c1.getX(), c2.getX());
+        int minY = Math.min(c1.getY(), c2.getY()), maxY = Math.max(c1.getY(), c2.getY());
+        int minZ = Math.min(c1.getZ(), c2.getZ()), maxZ = Math.max(c1.getZ(), c2.getZ());
+        BlockPos.MutableBlockPos cur = new BlockPos.MutableBlockPos();
+        for (int x = minX; x <= maxX; x++)
+            for (int y = minY; y <= maxY; y++)
+                for (int z = minZ; z <= maxZ; z++) {
+                    cur.set(x, y, z);
+                    if (!level.getBlockState(cur).isAir()) {
+                        level.destroyBlock(cur, true);
+                    }
+                }
+    }
+
     /** Place a standing birch sign rotated like {@code birch_sign[rotation=N]} with front-text lines. */
     public static void birchSign(ServerLevel level, BlockPos pos, int rotation, String[] lines) {
         BlockState state = Blocks.BIRCH_SIGN.defaultBlockState()
