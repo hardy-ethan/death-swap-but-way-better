@@ -9,6 +9,7 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
@@ -110,6 +111,32 @@ public final class Mc {
         player.setRespawnPosition(new ServerPlayer.RespawnConfig(
                 new LevelData.RespawnData(GlobalPos.of(level.dimension(), pos), yaw, pitch),
                 true), false);
+    }
+
+    /** Send a title + subtitle built from arbitrary {@link Component}s (bilingual/styled text). */
+    public static void titleRaw(ServerPlayer player, Component title, Component subtitle) {
+        player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
+        player.connection.send(new ClientboundSetTitleTextPacket(title));
+    }
+
+    /** Set only the subtitle line (the next title packet shows it). */
+    public static void subtitleRaw(ServerPlayer player, Component subtitle) {
+        player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
+    }
+
+    /** Set only the title line. */
+    public static void titleOnly(ServerPlayer player, Component title) {
+        player.connection.send(new ClientboundSetTitleTextPacket(title));
+    }
+
+    /** Action bar message (native {@code title @a actionbar ...}). */
+    public static void actionbar(ServerPlayer player, Component text) {
+        player.connection.send(new ClientboundSetActionBarTextPacket(text));
+    }
+
+    /** Native {@code title @a times <fadeIn> <stay> <fadeOut>} (ticks). */
+    public static void titleTimes(ServerPlayer player, int fadeIn, int stay, int fadeOut) {
+        player.connection.send(new ClientboundSetTitlesAnimationPacket(fadeIn, stay, fadeOut));
     }
 
     // ---- effects / attributes ----

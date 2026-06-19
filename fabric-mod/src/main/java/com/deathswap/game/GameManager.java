@@ -4,6 +4,7 @@ import com.deathswap.effects.EffectManager;
 import com.deathswap.items.ItemManager;
 import com.deathswap.util.Mc;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -99,6 +100,11 @@ public final class GameManager {
         return playerData.computeIfAbsent(player.getUUID(), PlayerData::new);
     }
 
+    /** True when the game language is Chinese ({@code Lang Core} 2). */
+    private boolean zh() {
+        return settings.isChinese();
+    }
+
     public PlayerData dataIfPresent(UUID uuid) {
         return playerData.get(uuid);
     }
@@ -108,10 +114,11 @@ public final class GameManager {
     public void onPlayerJoin(ServerPlayer player) {
         PlayerData data = data(player);
         if (phase == GamePhase.RUNNING || phase == GamePhase.ENDING) {
-            // Late joiner: spectate the ongoing game.
+            // Late joiner: spectate the ongoing game (extra/make_newbie_spec.mcfunction).
             data.playing = false;
             player.setGameMode(GameType.SPECTATOR);
-            Mc.msg(player, ">> A game is in progress. You'll join the next one.", ChatFormatting.YELLOW);
+            broadcast(Messages.joinedMidGame(player.getDisplayName()));
+            Mc.titleRaw(player, Messages.spectateTitle(), Messages.spectateSubtitle());
         } else {
             sendToHub(player);
         }
@@ -185,16 +192,15 @@ public final class GameManager {
     private void tickSwapClock() {
         int secondsLeft = (swapTicksRemaining + 19) / 20;
 
-        // Persistent action-bar countdown (above the hotbar). The action bar fades
-        // after ~3s, so refresh it every second.
-        if (swapTicksRemaining % 20 == 0) {
+        // Persistent action-bar countdown (above the hotbar), shown when the swap
+        // timer setting is on. The action bar fades after ~3s, so refresh it each second.
+        if (settings.showSwapTimer && swapTicksRemaining % 20 == 0) {
             showSwapCountdown(secondsLeft);
         }
 
-        // Announce at the configured warning threshold, plus the final 5s countdown.
-        boolean shouldWarn = secondsLeft == settings.swapWarning.seconds
-                || (secondsLeft >= 1 && secondsLeft <= 5);
-        if (shouldWarn && secondsLeft != lastWarnSecondAnnounced) {
+        // Announce on the datapack's cumulative warning ladder (clock.mcfunction).
+        if (secondsLeft != lastWarnSecondAnnounced
+                && shouldWarnAt(secondsLeft, settings.swapWarning.level())) {
             announceSwapWarning(secondsLeft);
             lastWarnSecondAnnounced = secondsLeft;
         }
@@ -217,12 +223,27 @@ public final class GameManager {
         }
     }
 
+    /**
+     * The datapack's cumulative warning ladder (clock.mcfunction): a higher
+     * {@code warnLvl} announces its own threshold <em>and</em> all lower ones. So
+     * "1 minute" also shows the 30s, 10s and 5..1 countdowns.
+     */
+    private boolean shouldWarnAt(int secondsLeft, int warnLvl) {
+        return switch (secondsLeft) {
+            case 60 -> warnLvl >= 4;
+            case 30 -> warnLvl >= 3;
+            case 10 -> warnLvl >= 2;
+            case 5, 4, 3, 2, 1 -> warnLvl >= 1;
+            default -> false;
+        };
+    }
+
     private void announceSwapWarning(int secondsLeft) {
+        // clock.mcfunction: ">> Swapping <<" gold title + countdown subtitle, plus
+        // playsound minecraft:block.anvil.land master @s ~ ~ ~ 9 0 (volume 9, pitch 0).
         for (ServerPlayer player : alivePlayers()) {
-            Mc.title(player, ">> Swapping <<", "In " + secondsLeft
-                            + (secondsLeft == 1 ? " second" : " seconds"),
-                    ChatFormatting.GOLD, ChatFormatting.YELLOW);
-            Mc.playSound(player, SoundEvents.ANVIL_LAND, 0.5f, 1.5f);
+            Mc.titleRaw(player, Messages.swappingTitle(), Messages.swappingSubtitle(secondsLeft));
+            Mc.playSound(player, SoundEvents.ANVIL_LAND, 9.0f, 0.0f);
         }
     }
 
@@ -265,9 +286,11 @@ public final class GameManager {
             if (settings.startWithBasicTools) {
                 giveStarterKit(player);
             }
+            // Spread far away and set the player's spawn at the destination, so a
+            // death/relog returns them there rather than the world origin.
             spreadFarAway(player, true);
-            Mc.title(player, ">> Death Swap! <<", "Survive and outlast everyone!",
-                    ChatFormatting.GREEN, ChatFormatting.AQUA);
+            // warping_all.mcfunction: ">> Spreading players... <<" action bar.
+            Mc.actionbar(player, Messages.spreadingActionbar(zh()));
         }
 
         // Assign permanent slot numbers after the per-player reset (which zeroes them).
@@ -280,15 +303,24 @@ public final class GameManager {
         swapTicksRemaining = 180 * 20;
         lastWarnSecondAnnounced = -1;
         itemTicksRemaining = 20 * 46; // first items after ~46s, per datapack
-        broadcast(">> The game has begun! <<", ChatFormatting.GREEN);
 
-        // Enable the emergency teleport after 32 seconds (start_tp_away.mcfunction).
+        // game_start.mcfunction runs ~5s after the spread: the title card, the raid
+        // horn (volume 99, pitch 1) and the map credits.
+        schedule(20 * 5, () -> {
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                Mc.titleRaw(p, Messages.startTitle(), Messages.startSubtitle());
+                Mc.playSound(p, SoundEvents.RAID_HORN, 99.0f, 1.0f);
+                Mc.msg(p, Messages.mapCredit(zh()));
+                Mc.msg(p, Messages.additionalCredit());
+            }
+        });
+
+        // Enable the emergency teleport after 32 seconds (start_tp_away.mcfunction;
+        // its protip tellraw is commented out in the datapack, so no chat line).
         schedule(20 * 32, () -> {
             for (ServerPlayer p : alivePlayers()) {
                 data(p).canTpAway = true;
             }
-            broadcast("Tip: /deathswap tpaway relocates you if your area is laggy.",
-                    ChatFormatting.GRAY);
         });
         return true;
     }
@@ -325,13 +357,22 @@ public final class GameManager {
 
         for (int i = 0; i < alive.size(); i++) {
             ServerPlayer player = alive.get(i);
-            Location dest = locations.get((i + 1) % alive.size());
+            int destIndex = (i + 1) % alive.size();
+            Location dest = locations.get(destIndex);
             dest.apply(player);
             // Disable swap fall damage exactly like the datapack (gamerule fall_damage
             // false for a tick) — reset accumulated fall, with no extra status effects.
             player.fallDistance = 0.0f;
-            Mc.title(player, ">> Swapped! <<", "", ChatFormatting.GOLD, ChatFormatting.WHITE);
-            Mc.playSound(player, SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
+            // swap.mcfunction: clear the title, show the gold ">> Swapped! <<" action
+            // bar, then the green "You warped to: <name>" line (Chinese adds a 2nd line).
+            // There is no swap sound in the datapack.
+            Mc.titleRaw(player, Component.empty(), Component.empty());
+            Mc.actionbar(player, Messages.swapActionbar(zh()));
+            ServerPlayer warpedToPlayer = alive.get(destIndex);
+            Mc.msg(player, Messages.warpedTo(warpedToPlayer.getDisplayName()));
+            if (zh()) {
+                Mc.msg(player, Messages.warpedToChinese());
+            }
             data(player).canTpAway = true; // restore the emergency teleport each cycle
         }
     }
@@ -357,10 +398,22 @@ public final class GameManager {
         return isNight;
     }
 
-    /** Item 72: switch the game language between English and Chinese. */
+    /**
+     * Item 72: switch the game language between English and Chinese, reproducing
+     * the ds:settings/lang_chinese / lang_english confirmation (title, subtitle,
+     * ui.button.click sound, banner line and the Chinese translator note).
+     */
     public void toggleLanguage() {
-        settings.language = settings.language == GameSettings.Language.ENGLISH
-                ? GameSettings.Language.CHINESE : GameSettings.Language.ENGLISH;
+        boolean toChinese = settings.language == GameSettings.Language.ENGLISH;
+        settings.language = toChinese ? GameSettings.Language.CHINESE : GameSettings.Language.ENGLISH;
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            Mc.titleRaw(p, Messages.langTitle(toChinese), Messages.langSubtitle(toChinese));
+            Mc.playSound(p, SoundEvents.UI_BUTTON_CLICK, 9.0f, 1.0f);
+            Mc.msg(p, Messages.langBanner(toChinese));
+            if (toChinese) {
+                Mc.msg(p, Messages.langTranslatorNote());
+            }
+        }
     }
 
     // ---- death / elimination (game/player_died, player_eliminated) ----
@@ -385,19 +438,19 @@ public final class GameManager {
         }
 
         data.lives--;
-        data.deathImmunityTicks = 20 * 40; // ~40s immunity, like the datapack
+        // no_death immunity: the datapack adds 5/tick and re-allows death at 800,
+        // i.e. 160 ticks = 8 seconds (not 40s).
+        data.deathImmunityTicks = 160;
+
+        // player_died.mcfunction (runs for every death, including the fatal one):
+        // broadcast line, ">> YOU DIED! <<" title and the "-1 Life!" subtitle.
+        broadcast(Messages.diedBroadcast(player.getDisplayName()));
+        Mc.titleRaw(player, Messages.diedTitle(zh()), Messages.diedSubtitle());
 
         if (data.lives <= 0) {
             eliminate(player);
         } else {
             survive(player);
-            // Relocate the player far away so they don't respawn right back inside
-            // whatever (trap, mob horde, lava) just killed them.
-            spreadFarAway(player, true);
-            Mc.title(player, ">> You died! <<", "-1 life (" + data.lives + " left)",
-                    ChatFormatting.RED, ChatFormatting.GOLD);
-            broadcast(player.getName().getString() + " died and lost a life! ("
-                    + data.lives + " left)", ChatFormatting.RED);
         }
         updateSidebar();
         return false; // we always handle death ourselves
@@ -421,7 +474,8 @@ public final class GameManager {
         player.setHealth(player.getMaxHealth());
         player.clearFire();
         player.fallDistance = 0.0f;
-        Mc.effect(player, MobEffects.RESISTANCE, 10, 4);
+        // player_died.mcfunction: effect give @s minecraft:resistance 10 5.
+        Mc.effect(player, MobEffects.RESISTANCE, 10, 5);
         player.getFoodData().setFoodLevel(20);
     }
 
@@ -433,10 +487,10 @@ public final class GameManager {
         data.clearOffer();
         effects.clearAll(player);
         player.setGameMode(GameType.SPECTATOR);
-        Mc.title(player, ">> Eliminated! <<", "You're out of lives.",
-                ChatFormatting.RED, ChatFormatting.GRAY);
-        Mc.playSound(player, SoundEvents.ENDER_DRAGON_GROWL, 1.0f, 1.0f);
-        broadcast(player.getName().getString() + " has been eliminated!", ChatFormatting.RED);
+        // player_eliminated.mcfunction: dragon growl (volume 9, pitch 1.2) and the
+        // ">> ELIMINATED! <<" subtitle (the "YOU DIED" title from player_died stays).
+        Mc.playSound(player, SoundEvents.ENDER_DRAGON_GROWL, 9.0f, 1.2f);
+        Mc.subtitleRaw(player, Messages.eliminatedSubtitle(zh()));
     }
 
     private void checkWinCondition() {
@@ -455,17 +509,28 @@ public final class GameManager {
         if (winner != null) {
             PlayerData data = data(winner);
             data.winner = true;
-            data.wins++;
-            Mc.give(winner, net.minecraft.world.item.Items.TOTEM_OF_UNDYING, 1);
-            Mc.effect(winner, MobEffects.RESISTANCE, 20, 4);
-            Mc.effect(winner, MobEffects.GLOWING, 6, 0);
-            broadcast(">>> " + winner.getName().getString()
-                    + " survived the longest and won the game! <<<", ChatFormatting.GREEN);
+            data.wins++; // scoreboard players add @s Wins 1
+
+            // prep_winner.mcfunction: clear effects on everyone, then resistance 20 5
+            // and saturation 20 5 for all; the winner gets glowing (12 1 after
+            // winner.mcfunction overrides) and a totem of undying in the offhand.
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-                Mc.title(p, winner.getName().getString() + " won!",
-                        "They survived the way better death swap!",
-                        ChatFormatting.GREEN, ChatFormatting.AQUA);
-                Mc.playSound(p, SoundEvents.ENDER_DRAGON_DEATH, 1.0f, 1.0f);
+                effects.clearAll(p);
+                Mc.effect(p, MobEffects.RESISTANCE, 20, 5);
+                Mc.effect(p, MobEffects.SATURATION, 20, 5);
+            }
+            Mc.effect(winner, MobEffects.GLOWING, 12, 1);
+            winner.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TOTEM_OF_UNDYING));
+
+            // winner.mcfunction: title times 0 140 5, the green win title/subtitle,
+            // the dragon-death sound (volume 99) and the broadcast line.
+            Component winnerName = winner.getDisplayName();
+            broadcast(Messages.winnerBroadcast(zh(), winnerName));
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                Mc.titleTimes(p, 0, 140, 5);
+                Mc.titleRaw(p, Messages.winnerTitle(winnerName), Messages.winnerSubtitle(zh()));
+                Mc.playSound(p, SoundEvents.ENDER_DRAGON_DEATH, 99.0f, 1.0f);
             }
         } else {
             broadcast(">> The game ended in a draw. <<", ChatFormatting.YELLOW);
@@ -645,6 +710,12 @@ public final class GameManager {
     public void broadcast(String text, ChatFormatting color) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Mc.msg(player, text, color);
+        }
+    }
+
+    public void broadcast(Component component) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Mc.msg(player, component);
         }
     }
 

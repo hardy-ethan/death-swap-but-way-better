@@ -924,7 +924,9 @@ public final class ItemRegistry {
                 "Switch game's language to Chinese 中文", "For the culture!!!")
                 .effect((ctx, self, t) -> {
                     ctx.game().toggleLanguage();
-                    announce(ctx.game(), self, "Switched the game's language!", null, ChatFormatting.LIGHT_PURPLE);
+                    // use/72a.mcfunction: a per-using-player broadcast after the switch.
+                    ctx.game().broadcast(com.deathswap.game.Messages.langSwitched(
+                            ctx.game().settings().isChinese(), self.getDisplayName()));
                 }).build());
 
         add(DeathSwapItem.of(73, GRAY, ChatFormatting.WHITE,

@@ -19,6 +19,11 @@ public final class GameSettings {
         SwapWarning(int seconds) {
             this.seconds = seconds;
         }
+
+        /** Datapack {@code warnLvl}: FIVE=1, TEN=2, THIRTY=3, ONE_MINUTE=4. */
+        public int level() {
+            return ordinal() + 1;
+        }
     }
 
     public enum Language {

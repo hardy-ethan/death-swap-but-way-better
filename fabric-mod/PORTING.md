@@ -27,9 +27,9 @@ ported, what is approximated, and which call sites are most version-sensitive.
 - The complete game state machine and tick loop.
 - Swap clock with fixed **and** random cycle modes, configurable pre-swap
   warning, and the cyclic position swap.
-- Lives, post-death immunity window, elimination → spectator, and the
-  last-player-standing win condition with the winner reward (totem, glow,
-  resistance).
+- Lives, the 8 s post-death immunity window, elimination → spectator, and the
+  last-player-standing win condition with the winner reward (offhand totem,
+  glowing 12 1, resistance/saturation 20 5).
 - Player spreading at game start and the `/deathswap tpaway` emergency relocate.
 - The full item lifecycle: 3-item offer, drop-to-select detection, self /
   opponent / all-others / random / everyone targeting, shield gating, and
@@ -87,10 +87,35 @@ spying, …) run through `EffectManager`/`ActiveEffect`.
 - **Spread radius**: capped at `GameManager.SPREAD_MAX` (250,000) instead of
   29,999,000 for world-gen sanity — raise it for full fidelity.
 
+## Bilingual + message/sound parity
+
+The core game-flow text now matches the datapack verbatim in **both** languages
+(`Lang Core` 1/2), built in `game/Messages.java` and emitted from `GameManager`:
+
+- Swap (`>> Swapped! <<` action bar, the "You warped to: \<name\>" line + the
+  Chinese-only follow-up, **no** swap sound — the datapack has none).
+- Swap countdown (`>> Swapping <<` + "In 1 minute/30 seconds/.../In 1", the
+  cumulative warn-level ladder, and `block.anvil.land` at volume 9 / pitch 0).
+- Game start (`>> D.S. But Way Better! <<` + `event.raid.horn` 99/1 + the map
+  credits), player spreading (`>> Spreading players... <<`).
+- Death (`>> YOU DIED! <<` + `-1 Life!` + the broadcast line, resistance 10 5),
+  elimination (`entity.ender_dragon.growl` 9/1.2 + `>> ELIMINATED! <<` subtitle).
+- Winner (`prep_winner`+`winner`: clear effects, resistance/saturation 20 5,
+  glowing 12 1, offhand totem, title times 0 140 5, `ender_dragon.death` 99, and
+  the green broadcast line).
+- Language switch item 72 (`lang_chinese`/`lang_english`: title + subtitle +
+  `ui.button.click` 9 + banner + Chinese translator note + the switched line).
+- Late-joiner spectate announcement (`make_newbie_spec`).
+
+Fixed along the way: post-death immunity is **8 s** (no_death 800 @ 5/tick = 160
+ticks), not 40 s; the extra teleport/"game begun"/"eliminated" chat lines were
+removed; swap is an action bar, not a title.
+
 ## Not yet ported
 
-- Bilingual UI: item *names* are stored, but in-game broadcast/title text and the
-  Chinese item names are English-only for now (item 72 still flips the flag).
+- Chinese **item names/lore** in the hotbar (item *effects* and all game-flow
+  text are bilingual; only the dyed item display strings are still English).
+- Per-item activation broadcasts beyond item 72 (each `items/use/<n>` tellraw).
 
 ## 26.2 mapping notes
 
@@ -102,7 +127,16 @@ versus the older Mojang names (useful when porting further):
 
 - `ServerPlayer.serverLevel()` → use `(ServerLevel) entity.level()` (`Mc.level`).
 - `ServerPlayer.teleportTo(...)` now takes `Set<Relative>` + a boolean.
-- `net.minecraft.resources.ResourceLocation` → `net.minecraft.resources.Identifier`.
+- `net.minecraft.resources.ResourceLocation` → `net.minecraft.resources.Identifier`;
+  the factory is `Identifier.fromNamespaceAndPath(ns, path)` (no `Identifier.of`).
+- `Structure#generate(...)` is an instance method taking `(Holder<Structure>,
+  ResourceKey<Level>, RegistryAccess, ChunkGenerator, BiomeSource, RandomState,
+  StructureTemplateManager, long, ChunkPos, int, LevelHeightAccessor,
+  Predicate<Holder<Biome>>)`; `StructureStart#placeInChunk` takes
+  `level.structureManager()` (the `StructureManager`, **not** the template mgr).
+  `Mc.placeStructure` mirrors `PlaceCommand.placeStructure` exactly.
+- Pointed-dripstone thickness enum `DripstoneThickness` → `SpeleothemThickness`
+  and the property `DRIPSTONE_THICKNESS` → `SPELEOTHEM_THICKNESS`.
 - `GameRules` moved to `net.minecraft.world.level.gamerules`; rules are
   `GameRule<T>` with `rules.get(rule)` / `rules.set(rule, val, server)`, and
   `KEEP_INVENTORY` / `NATURAL_HEALTH_REGENERATION` constants.
