@@ -46,6 +46,7 @@ public final class GameManager {
     private final Map<UUID, PlayerData> playerData = new HashMap<>();
     private final List<Scheduled> scheduled = new ArrayList<>();
     private final List<GravelTower> gravelTowers = new ArrayList<>();
+    private final List<java.util.function.BooleanSupplier> buildJobs = new ArrayList<>();
     private final java.util.Random random = new java.util.Random();
 
     private MinecraftServer server;
@@ -166,6 +167,7 @@ public final class GameManager {
         }
 
         tickGravelTowers();
+        tickBuildJobs();
 
         // Item offer clock. The datapack hands items to ONE player per interval,
         // round-robin, not to everyone at once.
@@ -676,6 +678,21 @@ public final class GameManager {
             this.x = x;
             this.z = z;
             this.y = baseY;
+        }
+    }
+
+    // ---- deferred world-build jobs (large exact builds spread across ticks) ----
+
+    /** Register a build job; it is ticked each game tick and removed when it returns true. */
+    public void addBuildJob(java.util.function.BooleanSupplier job) {
+        buildJobs.add(job);
+    }
+
+    private void tickBuildJobs() {
+        for (int i = buildJobs.size() - 1; i >= 0; i--) {
+            if (buildJobs.get(i).getAsBoolean()) {
+                buildJobs.remove(i);
+            }
         }
     }
 

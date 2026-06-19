@@ -144,24 +144,60 @@ public final class ItemRegistry {
      * box that belongs to any of the ~29 vanilla tags with {@code to}. Uses a
      * no-neighbour-update set to stay light on large boxes.
      */
+    private static boolean isAllToStoneTagged(BlockState s) {
+        for (TagKey<Block> tag : allToStoneTags()) {
+            if (s.is(tag)) return true;
+        }
+        return false;
+    }
+
     private static void replaceTagged(ServerLevel level, BlockPos c1, BlockPos c2, BlockState to) {
         int minX = Math.min(c1.getX(), c2.getX()), maxX = Math.max(c1.getX(), c2.getX());
         int minY = Math.min(c1.getY(), c2.getY()), maxY = Math.max(c1.getY(), c2.getY());
         int minZ = Math.min(c1.getZ(), c2.getZ()), maxZ = Math.max(c1.getZ(), c2.getZ());
-        List<TagKey<Block>> tags = allToStoneTags();
         BlockPos.MutableBlockPos cur = new BlockPos.MutableBlockPos();
         for (int x = minX; x <= maxX; x++)
             for (int y = minY; y <= maxY; y++)
                 for (int z = minZ; z <= maxZ; z++) {
                     cur.set(x, y, z);
-                    BlockState s = level.getBlockState(cur);
-                    for (TagKey<Block> tag : tags) {
-                        if (s.is(tag)) {
-                            level.setBlock(cur, to, Block.UPDATE_CLIENTS);
-                            break;
-                        }
+                    if (isAllToStoneTagged(level.getBlockState(cur))) {
+                        level.setBlock(cur, to, Block.UPDATE_CLIENTS);
                     }
                 }
+    }
+
+    /**
+     * Exact {@code misc/parkour_civ}: light up the 20 wall planes (z = ±1..±19)
+     * over the full world column, replacing tagged terrain with {@code light[1]}.
+     * Returned as a build job that processes a budget of positions per tick so the
+     * ~600k-position sweep never freezes the server.
+     */
+    private static java.util.function.BooleanSupplier parkourJob(ServerLevel level, int baseX, int baseZ) {
+        final int[] zPlanes = {19, 17, 15, 13, 11, 9, 7, 5, 3, 1, -1, -3, -5, -7, -9, -11, -13, -15, -17, -19};
+        final int yMin = -63, yMax = 317, xMin = -29, xMax = 29;
+        final BlockState lightState = Mc.light(1);
+        final int[] cur = {0, xMin, yMin}; // planeIndex, dx, y
+        final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        return () -> {
+            int budget = 20000;
+            while (budget-- > 0) {
+                if (cur[0] >= zPlanes.length) {
+                    return true;
+                }
+                pos.set(baseX + cur[1], cur[2], baseZ + zPlanes[cur[0]]);
+                if (isAllToStoneTagged(level.getBlockState(pos))) {
+                    level.setBlock(pos, lightState, Block.UPDATE_CLIENTS);
+                }
+                if (++cur[2] > yMax) {
+                    cur[2] = yMin;
+                    if (++cur[1] > xMax) {
+                        cur[1] = xMin;
+                        cur[0]++;
+                    }
+                }
+            }
+            return cur[0] >= zPlanes.length;
+        };
     }
 
     // ============================ ITEMS 1-30 ============================
@@ -1076,9 +1112,17 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    // A small quartz cell with iron-bar windows (approximates the parkour set).
-                    Mc.fill(lvl, o.offset(2, -1, 2), o.offset(-2, 4, -2), Blocks.QUARTZ_BLOCK, FillMode.NATURAL_ONLY);
-                    Mc.fill(lvl, o.offset(1, 0, 1), o.offset(-1, 3, -1), Blocks.AIR, FillMode.ALL);
+                    BlockState bars = Blocks.IRON_BARS.defaultBlockState();
+                    // One-shot: the bedrock-layer water floor and the iron-bar cell around the player.
+                    Mc.fill(lvl, new BlockPos(o.getX() + 26, -63, o.getZ() + 26),
+                            new BlockPos(o.getX() - 26, -63, o.getZ() - 26), Blocks.WATER, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(1, 0, 1), o.offset(1, 0, -1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(-1, 0, 1), o.offset(-1, 0, -1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(0, 0, 1), o.offset(0, 0, 1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(0, 0, -1), o.offset(0, 0, -1), bars, FillMode.AIR_ONLY);
+                    clearNightVisionAll(ctx);
+                    // Exact light-wall cage, built across ticks so it never freezes the server.
+                    ctx.game().addBuildJob(parkourJob(lvl, o.getX(), o.getZ()));
                     announce(ctx.game(), self, "Spawned inside of Parkour Civilization:", t, ChatFormatting.GREEN);
                 }).build());
 

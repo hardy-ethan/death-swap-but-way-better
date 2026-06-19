@@ -66,10 +66,12 @@ spying, …) run through `EffectManager`/`ActiveEffect`.
   game-rule APIs directly, with `time set` via the command dispatcher.
 - **Item 78 "crash someone's game"**: we deliberately do **not** crash a client.
   It reproduces the in-game warning plus heavy nausea/blindness instead.
+- **Parkour Civilization (95)** is reproduced **exactly**: the water floor and
+  iron-bar cell are placed immediately, and the 20 light-wall planes (the ~600k
+  position sweep) run as a `GameManager` build job that processes a budget of
+  positions per tick, so it never freezes the server.
 - **Superflat (76)** is still spread+grass platform (its `ds:superflat` dimension
-  JSON is now bundled, ready to wire). **Parkour Civilization (95)** is still a
-  quartz-cell approximation — the exact build touches ~600k blocks, so it needs a
-  spread-over-ticks pass rather than a one-shot freeze (pending).
+  JSON is now bundled, ready to wire).
 - **`fillbiome`** biome repaints (nether-world, peeing puddle) are skipped — only
   the block changes are reproduced.
 - **Hub/lobby**: modelled as a *state* (adventure at world spawn) driven by
