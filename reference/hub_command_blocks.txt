@@ -1,0 +1,56 @@
+# 55 command blocks
+[-20 50 -14] command_block auto=0 : /setblock -20 50 -17 minecraft:air
+[-20 50 -7] command_block auto=0 : setblock 0 112 7 minecraft:oak_button[facing=north,powered=false]
+[-15 50 -19] command_block auto=0 : /title @a title {"text":"Are you ready??","color":"red","bold":true}
+[-15 50 -15] command_block auto=0 : /setblock -17 50 -15 minecraft:air
+[-13 50 -15] command_block auto=0 : /execute if score Lang Core matches 1 run title @a title {"text":">> GAME OVER! <<","color":"green","bold":true}
+[-10 50 -12] command_block auto=0 : /execute as @a at @s run playsound minecraft:block.note_block.snare master @s ~ ~ ~ 9 0.9
+[-8 50 -19] command_block auto=0 : /title @a title {"text":"3","color":"red","bold":true}
+[-6 50 -15] command_block auto=0 : /title @a title " "
+[-4 50 -19] command_block auto=0 : /title @a title {"text":"2","color":"red","bold":true}
+[-1 50 -13] command_block auto=0 : /setblock -1 50 -15 minecraft:air
+[0 50 -19] command_block auto=0 : /title @a title {"text":"1","color":"red","bold":true}
+[0 50 0] command_block auto=1 : /kill @e[type=minecraft:enderman,distance=..40]
+[1 50 -15] command_block auto=0 : /function ds:extra/winner_fireworks
+[4 50 -15] command_block auto=0 : /function ds:extra/winner_fireworks
+[7 50 -15] command_block auto=0 : /function ds:extra/winner_fireworks
+[8 50 19] command_block auto=0 : /setblock 18 50 19 minecraft:air
+[10 50 -15] command_block auto=0 : /function ds:extra/winner_fireworks
+[13 50 -15] command_block auto=0 : /function ds:extra/winner_fireworks
+[17 50 -15] command_block auto=0 : /function ds:extra/winner_fireworks
+[17 50 -10] command_block auto=0 : /function ds:extra/winner_fireworks
+[19 50 14] command_block auto=0 : /execute as @a[tag=107alarm] at @s run playsound minecraft:block.note_block.pling master @s ~ ~ ~ 9 2
+[19 50 19] command_block auto=0 : /execute as @a[tag=game_crashed] at @s run playsound minecraft:block.note_block.pling master @s ~ ~ ~ 9 1.8
+[-20 51 -17] command_block auto=0 : setblock 0 112 7 minecraft:air
+[-20 51 -14] command_block auto=1 : /execute as @a at @s run playsound minecraft:entity.arrow.hit_player master @s ~ ~ ~ 9 0
+[-15 51 -19] command_block auto=1 : /title @a subtitle " "
+[-13 51 -15] command_block auto=1 : /execute if score Lang Core matches 2 run title @a title {"text":">> 游戏结束! <<","color":"green","bold":true}
+[-8 51 -19] command_block auto=1 : /execute as @a at @s run playsound minecraft:block.anvil.land master @s ~ ~ ~ 9 2
+[-6 51 -15] command_block auto=1 : execute if score Lang Core matches 1 run title @a subtitle {"text":"And the winner is...","color":"green"}
+[-4 51 -19] command_block auto=1 : /execute as @a at @s run playsound minecraft:block.anvil.land master @s ~ ~ ~ 9 2
+[0 51 -19] command_block auto=1 : /execute as @a at @s run playsound minecraft:block.anvil.land master @s ~ ~ ~ 9 2
+[0 51 0] command_block auto=1 : /kill @e[type=item,distance=..39]
+[-20 52 -14] command_block auto=1 : /title @a title {"text":">> WARNING! <<","color":"red","bold":true}
+[-15 52 -19] command_block auto=1 : /execute as @a at @s run playsound minecraft:block.anvil.land master @s ~ ~ ~ 9 0
+[-13 52 -15] command_block auto=1 : /execute if score Lang Core matches 1 run title @a subtitle {"text":"But who is the winner??","color":"yellow"}
+[-6 52 -15] command_block auto=1 : execute if score Lang Core matches 2 run title @a subtitle {"text":"获胜者是...","color":"green"}
+[0 52 -19] command_block auto=1 : /schedule function ds:game/warping_all 1s
+[-20 53 -14] command_block auto=1 : /execute if score Lang Core matches 1 run title @a subtitle {"text":"Read chat before starting!","color":"red"}
+[-15 53 -19] command_block auto=1 : /setblock -19 50 -19 minecraft:air
+[-13 53 -15] command_block auto=1 : /execute if score Lang Core matches 2 run title @a subtitle {"text":"但谁才是赢家??","color":"yellow"}
+[-6 53 -15] command_block auto=1 : /setblock -11 50 -12 minecraft:redstone_block
+[-20 54 -14] command_block auto=1 : /execute if score Lang Core matches 1 run tellraw @a [{"text":"Before you start...","color":"yellow","bold":true,"italic":false},{"text":"\n-Did all players click the sign to join the game?\n-Do you have the right game mode & settings set?\n-Are all players that will play on the server?\n-Did you remove any excess resource packs? (Shaders are fine)\n-Do you know how to play?\n-Will you republish this map on other websites like 9minecraft? (Don't do that or download from there)\n-If a Youtuber, did you give credit to the maker of this map and leave download link in description?","color":"yellow","bold":false,"italic":true},{"text":"\nWhen ready, press the button again to start","color":"yellow","bold":true}]
+[-6 54 -15] command_block auto=1 : /schedule function ds:game/winner 3s
+[-20 55 -14] command_block auto=1 : /execute if score Lang Core matches 2 run title @a subtitle {"text":"开始之前请先阅读聊天记录!","color":"red"}
+[-20 56 -14] command_block auto=1 : /execute if score Lang Core matches 2 run tellraw @a [{"text":"在开始之前...","color":"yellow","bold":true,"italic":false},{"text":"\n-所有玩家都点击了标志加入游戏了吗?\n-您是否设置了正确的游戏模式和设置?\n-所有将参加比赛的球员都到场了吗?\n-你是否删除了任何多余的资源包? (拥有着色器是没问题的)\n-你知道怎么玩吗?\n-您会在其他网站 (例如 9minecraft) 上重新发布这张地图吗? (不要那样做，也不要从那里下载)\n-如果你是YouTube博主，请问你是否注明了这张地图的制作者，并在视频描述中留下了下载链接","color":"yellow","bold":false,"italic":true},{"text":"\n准备就绪后, 请再次按下按钮开始","color":"yellow","bold":true}]
+[-48 101 -26] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-48 101 -25] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-48 101 -24] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-47 101 -26] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-47 101 -25] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-47 101 -24] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-46 101 -26] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-46 101 -25] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-46 101 -24] command_block auto=0 : /execute as @p[distance=..4] run function ds:extra/redo_respawn_anchor
+[-47 104 -28] command_block auto=1 : /fill -48 104 -26 -46 109 -24 minecraft:light
+[-47 105 -32] command_block auto=1 : /execute positioned -47 107 -32 run tp @a[distance=..3] -47 104 -25 90 0

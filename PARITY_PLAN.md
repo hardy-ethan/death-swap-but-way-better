@@ -261,12 +261,38 @@ coordinates:
 - crash (item 78): `18 50 19`; nuke alarm (item 107): `19 50 15`
 
 These command blocks orchestrate the spread/`game_start` start sequence, the
-winner/`winner_fireworks` loop, the crash contraption and the nuke siren. From
-the function files we can see they mostly just invoke existing functions
-(`game/game_start`, `game/warping_all`, `extra/winner_fireworks`), but their
-**exact contents/order are the one thing not yet verified** — they require
-reading the `.mca` chunks (needs an NBT/region parser or a MC client). This must
-be done before claiming bit-exact hub parity.
+winner/`winner_fireworks` loop, the crash contraption and the nuke siren.
+
+**RESOLVED:** I wrote a region/NBT parser (`scripts/mca_read.py`) and dumped all
+55 hub command blocks to `reference/hub_command_blocks.txt`. The flows are now
+known exactly:
+
+*Start:* birch button → `start_game_button` sets redstone `-20 50 -17` → chain:
+remove button, `entity.arrow.hit_player 9 0`, `>> WARNING! <<`, "Read chat before
+starting!" + the long "Before you start…" checklist tellraw (+ ZH), then place an
+**oak button** at `0 112 7`. Oak button → `prep/prep_game` → redstone
+`-19 50 -19` → chain: "Are you ready??", "3"/"2"/"1" with `block.anvil.land 9 2`,
+then `schedule ds:game/warping_all 1s`. `warping_all` freezes players, shows
+">> Spreading players… <<" (+ ZH), sets Lives from `maxLives`,
+`gamerule respawn_radius 1`, `setworldspawn -47 107 -32 90 1`, schedules
+`prep/spread/p1..p12` at 2t…24t (each `spreadplayers 0 0 10000 29999000 false @s`
+by `permPNo`), optional `random_cycle`, then `schedule ds:game/game_start 5s`.
+
+*Winner:* `prep_winner` sets redstone `-17 50 -15` → chain: `>> GAME OVER! <<`
+(+ ZH), "But who is the winner??" (+ ZH), `note_block.snare 9 0.9`, "And the
+winner is…" (+ ZH), `setblock -11 50 -12 redstone` + `schedule ds:game/winner
+3s`. `winner` shows the win title/broadcast, `ender_dragon.death 99`, `Wins++`,
+sets redstone `-1 50 -15` → **seven** `ds:extra/winner_fireworks` blocks fire at
+once, then `schedule prep_back_to_hub 10s`.
+
+*Always-on hub repeaters:* `kill @e[type=enderman,distance=..40]` and
+`kill @e[type=item,distance=..39]` at `0 50 0`. *Crash/nuke alarm:*
+`note_block.pling` loops for `@a[tag=game_crashed]` / `@a[tag=107alarm]`.
+*Respawn-anchor demo:* the `-48..-46 101` cluster runs
+`extra/redo_respawn_anchor` (tp to one of 40 far world-spawns).
+
+Only the hub **blocks** still need extracting as a structure (next step); the
+logic above is straightforward to reimplement in Java.
 
 `game/game_start` (the real start) does, exactly: reset speed/jump, clear
 powder_snow around players, title `>> D.S. But Way Better! <<` gold + subtitle
