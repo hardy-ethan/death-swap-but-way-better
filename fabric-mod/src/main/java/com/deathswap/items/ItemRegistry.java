@@ -5,8 +5,15 @@ import com.deathswap.util.Mc;
 import com.deathswap.util.Mc.FillMode;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -93,13 +100,128 @@ public final class ItemRegistry {
 
     private static void announce(com.deathswap.game.GameManager game, ServerPlayer self,
                                  String verb, ServerPlayer target, ChatFormatting color) {
-        String who = target == null || target == self ? "" : " " + target.getName().getString();
-        game.broadcast(">> " + self.getName().getString() + " --> " + verb + who, color);
+        // Use the scoreboard name (always the plain username) rather than
+        // getName(), which can render blank. Show the target whenever one is given
+        // — even when it's the user themselves — so the log never drops the "who".
+        String who = target == null ? "" : " " + target.getScoreboardName();
+        game.broadcast(">> " + self.getScoreboardName() + " --> " + verb + who, color);
     }
 
     /** Origin block for relative fills/builds (the executing player's feet). */
     private static BlockPos at(ServerPlayer p) {
         return p.blockPosition();
+    }
+
+    /** Native equivalent of {@code effect clear @a minecraft:night_vision}. */
+    private static void clearNightVisionAll(ItemContext ctx) {
+        for (ServerPlayer p : ctx.server().getPlayerList().getPlayers()) {
+            p.removeEffect(MobEffects.NIGHT_VISION);
+        }
+    }
+
+    /** The block tags {@code extra/all_to_stone} converts (the union it replaces). */
+    private static final String[] ALL_TO_STONE_TAG_NAMES = {
+            "all_signs", "ancient_city_replaceable", "anvil", "azalea_grows_on", "banners",
+            "base_stone_nether", "base_stone_overworld", "beacon_base_blocks", "beds", "buttons",
+            "cauldrons", "cave_vines", "corals", "diamond_ores", "dragon_immune", "emerald_ores",
+            "fences", "gold_ores", "ice", "inside_step_sound_blocks", "lapis_ores",
+            "lava_pool_stone_cannot_replace", "leaves", "logs", "mineable/axe", "mineable/pickaxe",
+            "mineable/hoe", "mineable/shovel", "overworld_carver_replaceables"
+    };
+    private static List<TagKey<Block>> allToStoneTags;
+
+    private static List<TagKey<Block>> allToStoneTags() {
+        if (allToStoneTags == null) {
+            List<TagKey<Block>> tags = new ArrayList<>();
+            for (String name : ALL_TO_STONE_TAG_NAMES) {
+                tags.add(TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("minecraft", name)));
+            }
+            allToStoneTags = tags;
+        }
+        return allToStoneTags;
+    }
+
+    /**
+     * Native equivalent of {@code extra/all_to_stone}: replace every block in the
+     * box that belongs to any of the ~29 vanilla tags with {@code to}. Uses a
+     * no-neighbour-update set to stay light on large boxes.
+     */
+    private static boolean isAllToStoneTagged(BlockState s) {
+        for (TagKey<Block> tag : allToStoneTags()) {
+            if (s.is(tag)) return true;
+        }
+        return false;
+    }
+
+    private static void replaceTagged(ServerLevel level, BlockPos c1, BlockPos c2, BlockState to) {
+        int minX = Math.min(c1.getX(), c2.getX()), maxX = Math.max(c1.getX(), c2.getX());
+        int minY = Math.min(c1.getY(), c2.getY()), maxY = Math.max(c1.getY(), c2.getY());
+        int minZ = Math.min(c1.getZ(), c2.getZ()), maxZ = Math.max(c1.getZ(), c2.getZ());
+        BlockPos.MutableBlockPos cur = new BlockPos.MutableBlockPos();
+        for (int x = minX; x <= maxX; x++)
+            for (int y = minY; y <= maxY; y++)
+                for (int z = minZ; z <= maxZ; z++) {
+                    cur.set(x, y, z);
+                    if (isAllToStoneTagged(level.getBlockState(cur))) {
+                        level.setBlock(cur, to, Block.UPDATE_CLIENTS);
+                    }
+                }
+    }
+
+    /** A flat single-Y rectangular fill, spread across ticks (for the huge sun-blocking ceiling). */
+    private static java.util.function.BooleanSupplier layerJob(ServerLevel level, int minX, int maxX,
+                                                               int y, int minZ, int maxZ, BlockState state) {
+        final int[] cur = {minX, minZ};
+        final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        return () -> {
+            int budget = 20000;
+            while (budget-- > 0) {
+                if (cur[0] > maxX) {
+                    return true;
+                }
+                pos.set(cur[0], y, cur[1]);
+                level.setBlock(pos, state, Block.UPDATE_CLIENTS);
+                if (++cur[1] > maxZ) {
+                    cur[1] = minZ;
+                    cur[0]++;
+                }
+            }
+            return cur[0] > maxX;
+        };
+    }
+
+    /**
+     * Exact {@code misc/parkour_civ}: light up the 20 wall planes (z = ±1..±19)
+     * over the full world column, replacing tagged terrain with {@code light[1]}.
+     * Returned as a build job that processes a budget of positions per tick so the
+     * ~600k-position sweep never freezes the server.
+     */
+    private static java.util.function.BooleanSupplier parkourJob(ServerLevel level, int baseX, int baseZ) {
+        final int[] zPlanes = {19, 17, 15, 13, 11, 9, 7, 5, 3, 1, -1, -3, -5, -7, -9, -11, -13, -15, -17, -19};
+        final int yMin = -63, yMax = 317, xMin = -29, xMax = 29;
+        final BlockState lightState = Mc.light(1);
+        final int[] cur = {0, xMin, yMin}; // planeIndex, dx, y
+        final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        return () -> {
+            int budget = 20000;
+            while (budget-- > 0) {
+                if (cur[0] >= zPlanes.length) {
+                    return true;
+                }
+                pos.set(baseX + cur[1], cur[2], baseZ + zPlanes[cur[0]]);
+                if (isAllToStoneTagged(level.getBlockState(pos))) {
+                    level.setBlock(pos, lightState, Block.UPDATE_CLIENTS);
+                }
+                if (++cur[2] > yMax) {
+                    cur[2] = yMin;
+                    if (++cur[1] > xMax) {
+                        cur[1] = xMin;
+                        cur[0]++;
+                    }
+                }
+            }
+            return cur[0] >= zPlanes.length;
+        };
     }
 
     // ============================ ITEMS 1-30 ============================
@@ -129,11 +251,12 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(4, PURPLE, ChatFormatting.LIGHT_PURPLE,
                 "Teleport someone to the End", "Lets beat Minecraft!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ServerLevel end = ctx.server().getLevel(Level.END);
-                    if (end != null) {
-                        Mc.fill(end, new BlockPos(98, 48, -2), new BlockPos(102, 48, 2), Blocks.OBSIDIAN, FillMode.ALL);
-                        Mc.teleportTo(t, end, 100.5, 49, 0.5, 180, 0);
-                    }
+                    // Datapack 4b: an end_portal pad at fixed overworld coords; the target is
+                    // dropped on it and falls through to the End.
+                    ServerLevel ow = ctx.server().overworld();
+                    Mc.fillState(ow, new BlockPos(-3, 79, -11), new BlockPos(1, 77, -7), Mc.light(15), FillMode.ALL);
+                    Mc.fill(ow, new BlockPos(-3, 76, -11), new BlockPos(1, 76, -7), Blocks.END_PORTAL, FillMode.ALL);
+                    Mc.teleportTo(t, ow, -1, 77, -9, 180, 0);
                     announce(ctx.game(), self, "Teleported to the End dimension:", t, ChatFormatting.LIGHT_PURPLE);
                 }).build());
 
@@ -147,7 +270,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(6, PINK, ChatFormatting.LIGHT_PURPLE,
                 "Teleport someone really far away", "Is someones trap too good? Teleport them away from it!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ctx.game().spreadFarAway(t);
+                    ctx.game().spreadFarAway(t, true);
                     announce(ctx.game(), self, "Teleported far, far away:", t, ChatFormatting.LIGHT_PURPLE);
                 }).build());
 
@@ -170,10 +293,24 @@ public final class ItemRegistry {
                 "Summon an 300 block-tall gravel tower", "You can never go wrong with the basics! ...right?")
                 .effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(self);
-                    BlockPos base = at(self).offset(2, 0, 0);
-                    int top = Math.min(base.getY() + 300, lvl.getMaxY());
-                    Mc.fill(lvl, base, new BlockPos(base.getX(), top, base.getZ()), Blocks.GRAVEL, FillMode.ALL);
+                    BlockPos o = at(self);
+                    // misc/gravel_base — the lit obsidian launch pad and the seed gravel block.
+                    Mc.setBlock(lvl, o.offset(3, -1, 0), Blocks.OBSIDIAN);
+                    Mc.fillState(lvl, o.offset(3, 0, 0), o.offset(3, 1, 0), Mc.light(12), FillMode.ALL);
+                    Mc.setBlock(lvl, o.offset(3, 2, 0), Blocks.DIRT);
+                    Mc.setBlock(lvl, o.offset(3, 3, 0), Blocks.GRAVEL);
+                    Mc.fill(lvl, o.offset(2, 3, 0), o.offset(2, 4, 0), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(4, 3, 0), o.offset(4, 4, 0), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(3, 3, 1), o.offset(3, 4, 1), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(3, 3, -1), o.offset(3, 4, -1), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(2, 0, 0), o.offset(1, 1, 0), Mc.light(5), FillMode.ALL);
+                    Mc.fill(lvl, o.offset(4, 0, 0), o.offset(4, 2, 0), Blocks.OBSIDIAN, FillMode.ALL);
+                    // misc/gravel_up grows the column upward to the build limit over time.
+                    ctx.game().addGravelTower(lvl, o.getX() + 3, o.getY() + 3, o.getZ());
+                    Mc.setYaw(self, -90);
+                    clearNightVisionAll(ctx);
                     Mc.msg(self, "A gravel tower was placed right in front of you!", ChatFormatting.WHITE);
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 99f, 1.0f);
                 }).build());
 
         add(DeathSwapItem.of(10, BLUE, ChatFormatting.BLUE,
@@ -201,10 +338,17 @@ public final class ItemRegistry {
                 "Place a Nether Portal next to you", "Skip the pro-speedrun strat")
                 .effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(self);
-                    BlockPos o = at(self).offset(2, 0, 0);
-                    Mc.fill(lvl, o, o.offset(0, 4, 3), Blocks.OBSIDIAN, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(0, 1, 1), o.offset(0, 3, 2), Blocks.NETHER_PORTAL, FillMode.ALL);
+                    BlockPos o = at(self);
+                    Mc.fill(lvl, o.offset(3, 0, 0), o.offset(3, 0, 3), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(3, 4, 0), o.offset(3, 4, 3), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(3, 0, 0), o.offset(3, 4, 0), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(3, 0, 3), o.offset(3, 4, 3), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(3, 1, 1), o.offset(3, 3, 2), Mc.netherPortal(Direction.Axis.Z), FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, 0, 0), o.offset(2, 2, 2), Blocks.AIR, FillMode.ALL);
+                    Mc.setYaw(self, -90);
                     Mc.msg(self, ">> A nether portal was placed in front of you! <<", ChatFormatting.RED);
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 99f, 1.0f);
+                    Mc.playSound(self, SoundEvents.BLAZE_SHOOT, 9f, 1.0f);
                 }).build());
 
         add(DeathSwapItem.of(13, BROWN, ChatFormatting.GOLD,
@@ -214,7 +358,7 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(14, RED, ChatFormatting.GOLD,
                 "Spawn TNT on someone", "They won't expect it!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    primeTnt(Mc.level(t), t.position(), 0, 1, 0, (byte) 85, 4);
+                    primeTnt(Mc.level(t), t.position(), 0, 1, 0, (byte) 85);
                     Mc.title(t, "RUN away!", "", ChatFormatting.RED, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Spawned ignited TNT on", t, ChatFormatting.RED);
                 }).build());
@@ -223,7 +367,7 @@ public final class ItemRegistry {
                 "Place a 7x7x7 cube of air on someone", "All blocks in a 3-block radius of them turns to air!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), o.offset(3, 3, 3), o.offset(-3, -3, -3), Blocks.AIR, FillMode.ALL);
+                    Mc.destroyBox(Mc.level(t), o.offset(3, 3, 3), o.offset(-3, -3, -3));
                     announce(ctx.game(), self, "Placed a 7x7x7 cube of air, deleting all blocks on", t, ChatFormatting.WHITE);
                 }).build());
 
@@ -234,19 +378,27 @@ public final class ItemRegistry {
                     BlockPos o = at(t);
                     Mc.fill(lvl, new BlockPos(o.getX() + 2, -62, o.getZ() + 2),
                             new BlockPos(o.getX() - 2, -62, o.getZ() - 2), Blocks.BEDROCK, FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(o.getX() + 2, -61, o.getZ() + 2),
+                            new BlockPos(o.getX() - 2, -59, o.getZ() - 2), Mc.light(1), FillMode.ALL);
                     Mc.fill(lvl, new BlockPos(o.getX() + 2, -58, o.getZ() + 2),
                             new BlockPos(o.getX() - 2, -58, o.getZ() - 2), Blocks.DEEPSLATE, FillMode.ALL);
-                    Mc.teleportTo(t, lvl, o.getX() + 0.5, -61, o.getZ() + 0.5, t.getYRot(), t.getXRot());
+                    Mc.teleportTo(t, lvl, t.getX(), -61, t.getZ(), t.getYRot(), t.getXRot());
+                    Mc.setBlock(lvl, new BlockPos(o.getX(), -61, o.getZ()), Blocks.TORCH);
+                    clearNightVisionAll(ctx);
                     announce(ctx.game(), self, "Teleported to Y = -60 (bedrock layer):", t, ChatFormatting.YELLOW);
                 }).build());
 
         add(DeathSwapItem.of(17, GRAY, ChatFormatting.YELLOW,
                 "Spawn a hole that goes to the void", "They might end up in the End!")
                 .effect((ctx, self, t) -> {
-                    BlockPos o = at(self).offset(2, 0, 0);
-                    Mc.fill(Mc.level(self), new BlockPos(o.getX(), o.getY() + 2, o.getZ()),
-                            new BlockPos(o.getX() + 3, -64, o.getZ() + 2), Blocks.AIR, FillMode.ALL);
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    Mc.fill(lvl, new BlockPos(o.getX() + 3, o.getY() + 2, o.getZ()),
+                            new BlockPos(o.getX() + 6, -64, o.getZ() + 2), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, 0, 0), o.offset(5, 1, 0), Blocks.AIR, FillMode.ALL);
+                    Mc.setYaw(self, -90);
                     Mc.msg(self, ">> A hole to the void summoned in front of you! <<", ChatFormatting.WHITE);
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 99f, 1.0f);
                 }).build());
 
         add(DeathSwapItem.of(18, MAGENTA, ChatFormatting.AQUA,
@@ -267,6 +419,7 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     Mc.fill(Mc.level(t), o.offset(4, 3, 4), o.offset(-4, -2, -4), Blocks.BARRIER, FillMode.HOLLOW);
+                    Mc.setBlock(Mc.level(t), o.offset(0, -1, 0), Blocks.TORCH);
                     announce(ctx.game(), self, "Trapped in an annoying barrier block cage:", t, ChatFormatting.WHITE);
                 }).build());
 
@@ -274,15 +427,17 @@ public final class ItemRegistry {
                 "Give a player motion sickness: 30 seconds", "Bro drove through the Rocky Mountains")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("motion_sick", 46 * 20,
-                            p -> p.setYRot(p.getYRot() + 10f), null));
+                            p -> Mc.rotateRelative(p, 10f, 0.1f), null));
                     announce(ctx.game(), self, "Gave motion sickness to", t, ChatFormatting.DARK_GREEN);
                 }).build());
 
         add(DeathSwapItem.of(22, LIGHT_GRAY, ChatFormatting.WHITE,
                 "Turn all nearby blocks of a player to stone", "The stone age comes to Minecraft")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), o.offset(12, 6, 12), o.offset(-12, -6, -12), Blocks.STONE, FillMode.NATURAL_ONLY);
+                    replaceTagged(lvl, o.offset(12, 6, 12), o.offset(-1, -6, -12), Blocks.STONE.defaultBlockState());
+                    replaceTagged(lvl, o.offset(12, -2, 12), o.offset(-12, -6, -12), Blocks.STONE.defaultBlockState());
                     announce(ctx.game(), self, "Changed all nearby blocks to stone for", t, ChatFormatting.WHITE);
                 }).build());
 
@@ -303,14 +458,43 @@ public final class ItemRegistry {
                     List<ServerPlayer> all = ctx.game().alivePlayers();
                     ServerPlayer victim = all.get(self.getRandom().nextInt(all.size()));
                     victim.getInventory().clearContent();
-                    announce(ctx.game(), self, "Cleared a random person's inventory -->", victim, ChatFormatting.RED);
+                    Mc.title(victim, " ", self.getScoreboardName() + " cleared your inventory!",
+                            ChatFormatting.WHITE, ChatFormatting.RED);
+                    // Always name the unlucky player explicitly (it can be the user).
+                    ctx.game().broadcast(">> " + self.getScoreboardName()
+                            + " --> Cleared " + victim.getScoreboardName()
+                            + "'s inventory! (randomly chosen)", ChatFormatting.RED);
                 }).build());
 
         add(DeathSwapItem.of(25, GRAY, ChatFormatting.WHITE,
                 "Make someone leave a bedrock trail: 40 secs", "Wherever they walk, the blocks below them turn to bedrock.")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ctx.effects().apply(t, new ActiveEffect("bedrock_trail", 72 * 20,
-                            p -> Mc.setBlock(Mc.level(p), p.blockPosition().below(), Blocks.BEDROCK), null));
+                    BlockPos[] last = {null};
+                    ctx.effects().apply(t, new ActiveEffect("bedrock_trail", 72 * 20, p -> {
+                        // Replace the block the player is standing on (datapack ~-0.9),
+                        // without triggering neighbour/light updates — those are what
+                        // made a 36s-long per-tick trail tank the server's tick rate.
+                        ServerLevel lvl = Mc.level(p);
+                        BlockPos cur = BlockPos.containing(p.getX(), p.getY() - 0.9, p.getZ());
+                        // Fill any gap since the previous placement so the player can't
+                        // outrun the trail (and fall through it) when the server lags.
+                        if (last[0] != null) {
+                            int steps = Math.max(Math.abs(cur.getX() - last[0].getX()),
+                                    Math.abs(cur.getZ() - last[0].getZ()));
+                            if (steps > 0 && steps <= 8) { // skip the jump after a swap/teleport
+                                for (int i = 1; i < steps; i++) {
+                                    double f = (double) i / steps;
+                                    Mc.setBlockFast(lvl, new BlockPos(
+                                            (int) Math.round(last[0].getX() + (cur.getX() - last[0].getX()) * f),
+                                            (int) Math.round(last[0].getY() + (cur.getY() - last[0].getY()) * f),
+                                            (int) Math.round(last[0].getZ() + (cur.getZ() - last[0].getZ()) * f)),
+                                            Blocks.BEDROCK);
+                                }
+                            }
+                        }
+                        Mc.setBlockFast(lvl, cur, Blocks.BEDROCK);
+                        last[0] = cur;
+                    }, null));
                     Mc.title(t, " ", "Look below you!", ChatFormatting.WHITE, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Made a bedrock trail follow", t, ChatFormatting.WHITE);
                 }).build());
@@ -343,7 +527,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(30, ORANGE, ChatFormatting.GOLD,
                 "Give yourself a fire resistance potion", "Because the Nether exists, yunno?")
-                .effect((ctx, self, t) -> Mc.givePotion(self, Potions.FIRE_RESISTANCE)).build());
+                .effect((ctx, self, t) -> Mc.givePotion(self, Potions.LONG_FIRE_RESISTANCE)).build());
     }
 
     // ============================ ITEMS 31-60 ===========================
@@ -356,8 +540,13 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(32, LIGHT_GRAY, ChatFormatting.WHITE,
                 "Spawn falling anvils above someone", "A worse concussion than in NFL Football")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), o.offset(3, 6, 3), o.offset(-3, 8, -3), Blocks.ANVIL, FillMode.ALL);
+                    Mc.fill(lvl, o, o.offset(0, 1, 0), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, 2, 1), o.offset(-1, 2, -1), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(2, 3, 2), o.offset(-2, 3, -2), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(3, 4, 3), o.offset(-3, 8, -3), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(3, 6, 3), o.offset(-3, 8, -3), Blocks.ANVIL, FillMode.ALL);
                     Mc.title(t, ">> HEADS UP!! <<", "", ChatFormatting.RED, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Spawned falling anvils above", t, ChatFormatting.WHITE);
                 }).build());
@@ -377,15 +566,18 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     Mc.fill(Mc.level(t), o.offset(14, 6, 14), o.offset(-14, -6, -14), Blocks.BELL, FillMode.AIR_ONLY);
+                    clearNightVisionAll(ctx);
                     announce(ctx.game(), self, "Replaced all air around with bells for", t, ChatFormatting.YELLOW);
                 }).build());
 
         add(DeathSwapItem.of(35, ORANGE, ChatFormatting.GOLD,
                 "Place a layer of lava above someone", "La-la-la lava...")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), o.offset(1, 2, 1), o.offset(-1, 12, -1), Blocks.AIR, FillMode.ALL);
-                    Mc.fill(Mc.level(t), o.offset(28, 9, 28), o.offset(-28, 10, -28), Blocks.LAVA, FillMode.ALL);
+                    Mc.fill(lvl, o, o.offset(0, 1, 0), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, 2, 1), o.offset(-1, 12, -1), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(28, 9, 28), o.offset(-28, 10, -28), Blocks.LAVA, FillMode.ALL);
                     announce(ctx.game(), self, "Spawned a layer of lava above", t, ChatFormatting.GOLD);
                 }).build());
 
@@ -493,9 +685,16 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(48, GRAY, ChatFormatting.WHITE,
                 "Block out the sun for someone", "Ehh, Vitamin D is overrated anyways")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), new BlockPos(o.getX() + 64, 317, o.getZ() + 64),
+                    Mc.fill(lvl, new BlockPos(o.getX() + 64, 317, o.getZ() + 64),
                             new BlockPos(o.getX() - 64, 317, o.getZ() - 64), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, new BlockPos(o.getX() + 16, 316, o.getZ() + 16),
+                            new BlockPos(o.getX() - 16, 316, o.getZ() - 16), Blocks.OBSIDIAN, FillMode.ALL);
+                    // The 353x353 layer at y318 is built across ticks (forceload is implicit: setBlock loads chunks).
+                    ctx.game().addBuildJob(layerJob(lvl, o.getX() - 176, o.getX() + 176, 318,
+                            o.getZ() - 176, o.getZ() + 176, Blocks.OBSIDIAN.defaultBlockState()));
+                    clearNightVisionAll(ctx);
                     announce(ctx.game(), self, "Blocked out the sun with an obsidian ceiling for", t, ChatFormatting.WHITE);
                 }).build());
 
@@ -536,11 +735,21 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(53, BROWN, ChatFormatting.YELLOW,
                 "Spawn a village right where you are", "Villages are overpowered anyway")
-                .effect((ctx, self, t) -> Mc.runAt(self, "place structure minecraft:village_plains")).build());
+                .effect((ctx, self, t) -> {
+                    Mc.placeStructure(Mc.level(self), at(self), "village_plains");
+                    Mc.msg(self, "You now have access to a village! (IMPORTANT: If you are underground, "
+                            + "it spawned up on the surface!)", ChatFormatting.YELLOW);
+                    Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
+                }).build());
 
         add(DeathSwapItem.of(54, ORANGE, ChatFormatting.YELLOW,
                 "Spawn a desert temple right where you are", "Yunno, for that classic TNT trap we all love...")
-                .effect((ctx, self, t) -> Mc.runAt(self, "place structure minecraft:desert_pyramid")).build());
+                .effect((ctx, self, t) -> {
+                    Mc.placeStructure(Mc.level(self), at(self), "desert_pyramid");
+                    Mc.msg(self, "You now have access to a desert temple/pyramid! Good job! (Note: If you "
+                            + "don't see it on the surface it may have spawned underground)", ChatFormatting.YELLOW);
+                    Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
+                }).build());
 
         add(DeathSwapItem.of(55, GRAY, ChatFormatting.YELLOW,
                 "Summon a California earthquake on EVERYONE except you", "Please excuse my trauma")
@@ -569,7 +778,7 @@ public final class ItemRegistry {
                 "Force a player to look down for 45 secs", "Always look where you're stepping!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("look_down", 45 * 20,
-                            p -> p.setXRot(Math.min(90f, p.getXRot() + 8f)), null));
+                            p -> Mc.rotateRelative(p, 0f, 8f), null));
                     announce(ctx.game(), self, "Forced a downward look for 45 seconds:", t, ChatFormatting.GREEN);
                 }).build());
 
@@ -595,12 +804,24 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
+                    // Bedrock floor & ceiling.
                     Mc.fill(lvl, o.offset(10, -1, 6), o.offset(-10, -1, -6), Blocks.BEDROCK, FillMode.ALL);
                     Mc.fill(lvl, o.offset(10, 2, 6), o.offset(-10, 2, -6), Blocks.BEDROCK, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(-10, 1, 6), Blocks.OBSIDIAN, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(10, 0, -6), o.offset(-10, 1, -6), Blocks.OBSIDIAN, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(10, 1, -6), Blocks.OBSIDIAN, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(-10, 0, 6), o.offset(-10, 1, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    // Lower wall ring: obsidian. Upper ring: crying obsidian (datapack).
+                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(-10, 0, 6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 0, -6), o.offset(-10, 0, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(10, 0, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-10, 0, 6), o.offset(-10, 0, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 1, 6), o.offset(-10, 1, 6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 1, -6), o.offset(-10, 1, -6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 1, 6), o.offset(10, 1, -6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-10, 1, 6), o.offset(-10, 1, -6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    // A torch for light, and a chest with a worn diamond pickaxe (slot 13,
+                    // damage 1500) so the prisoner can slowly mine their way out.
+                    Mc.setBlock(lvl, o, Blocks.TORCH);
+                    ItemStack pick = new ItemStack(Items.DIAMOND_PICKAXE);
+                    pick.set(net.minecraft.core.component.DataComponents.DAMAGE, 1500);
+                    Mc.chestWithItem(lvl, o.offset(2, 0, 1), 13, pick);
                     announce(ctx.game(), self, "Trapped inside of a prison:", t, ChatFormatting.RED);
                 }).build());
 
@@ -619,8 +840,10 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(65, CYAN, ChatFormatting.AQUA,
                 "Liquidate all blocks surrounding a player", "Because the Nether exists, yunno?")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), o.offset(12, 6, 12), o.offset(-12, -6, -12), Blocks.WATER, FillMode.NATURAL_ONLY);
+                    replaceTagged(lvl, o.offset(12, 6, 12), o.offset(-12, -1, -12), Blocks.WATER.defaultBlockState());
+                    replaceTagged(lvl, o.offset(12, -2, 12), o.offset(-12, -6, -12), Blocks.WATER.defaultBlockState());
                     announce(ctx.game(), self, "Liquidated all nearby blocks into water:", t, ChatFormatting.AQUA);
                 }).build());
 
@@ -657,11 +880,15 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(70, GREEN, ChatFormatting.GREEN,
                 "Launch a Viet Cong ambush on someone", "Queue the Rolling Stones music")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    double[][] ring = {{8, 0, 0}, {-8, 0, 0}, {0, 0, 8}, {0, 0, -8}, {8, 0, 2}, {-8, 0, 2},
-                            {2, 0, 8}, {2, 0, -8}, {6, 0, 6}, {-6, 0, 6}, {6, 0, -6}, {-6, 0, -6}};
+                    double[][] ring = {{8, 0}, {-8, 0}, {0, 8}, {0, -8}, {8, 2}, {-8, 2},
+                            {2, 8}, {2, -8}, {6, 6}, {-6, 6}, {6, -6}, {-6, -6}};
                     for (double[] d : ring) {
-                        Entity z = Mc.summonRel(t, EntityTypes.HUSK, d[0], d[1], d[2]);
-                        if (z instanceof Monster m) m.setCustomName(Component.literal("The Việt Cộng"));
+                        // Find a vertical gap so the husks don't suffocate in walls/hills.
+                        Entity z = Mc.summonRelSafe(t, EntityTypes.HUSK, d[0], d[1]);
+                        if (z instanceof Monster m) {
+                            m.setCustomName(Component.literal("The Việt Cộng"));
+                            m.setPersistenceRequired();
+                        }
                     }
                     announce(ctx.game(), self, "Ambushed with a Viet Cong attack:", t, ChatFormatting.GREEN);
                 }).build());
@@ -669,8 +896,13 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(71, LIGHT_BLUE, ChatFormatting.AQUA,
                 "Give yourself a one-hit-kill sword", "One hit, one kill, just in case...")
                 .effect((ctx, self, t) -> {
-                    ItemStack sword = new ItemStack(Items.NETHERITE_SWORD);
+                    // Datapack gives a diamond sword at 1 durability (damage=1560 of
+                    // 1561) so it breaks after a single swing — "ONE USE".
+                    ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
                     Mc.enchant(self, sword, Enchantments.SHARPNESS, 5);
+                    Mc.enchant(self, sword, Enchantments.FIRE_ASPECT, 1);
+                    Mc.enchant(self, sword, Enchantments.KNOCKBACK, 2);
+                    Mc.enchant(self, sword, Enchantments.LOOTING, 3);
                     sword.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
                             Component.literal("One-hit-kill -- ONE USE!").withStyle(ChatFormatting.AQUA));
                     ItemAttributeModifiers mods = ItemAttributeModifiers.builder()
@@ -679,6 +911,12 @@ public final class ItemRegistry {
                                     999999.0, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
                             .build();
                     sword.set(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, mods);
+                    // Leave exactly one point of durability so it shatters on use.
+                    sword.set(net.minecraft.core.component.DataComponents.DAMAGE, sword.getMaxDamage() - 1);
+                    // Irreparable: no material/anvil can top it back up.
+                    sword.set(net.minecraft.core.component.DataComponents.REPAIRABLE,
+                            new net.minecraft.world.item.enchantment.Repairable(
+                                    net.minecraft.core.HolderSet.empty()));
                     Mc.giveStack(self, sword);
                 }).build());
 
@@ -686,7 +924,9 @@ public final class ItemRegistry {
                 "Switch game's language to Chinese 中文", "For the culture!!!")
                 .effect((ctx, self, t) -> {
                     ctx.game().toggleLanguage();
-                    announce(ctx.game(), self, "Switched the game's language!", null, ChatFormatting.LIGHT_PURPLE);
+                    // use/72a.mcfunction: a per-using-player broadcast after the switch.
+                    ctx.game().broadcast(com.deathswap.game.Messages.langSwitched(
+                            ctx.game().settings().isChinese(), self.getDisplayName()));
                 }).build());
 
         add(DeathSwapItem.of(73, GRAY, ChatFormatting.WHITE,
@@ -713,9 +953,17 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(76, GREEN, ChatFormatting.GREEN,
                 "Teleport someone to a superflat world", "Throwback 2014")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ctx.game().spreadFarAway(t);
-                    BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), o.offset(12, -1, 12), o.offset(-12, -1, -12), Blocks.GRASS_BLOCK, FillMode.ALL);
+                    // Datapack 76b: spread the target into the bundled ds:superflat dimension.
+                    ServerLevel flat = ctx.server().getLevel(
+                            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("ds", "superflat")));
+                    if (flat != null) {
+                        double angle = t.getRandom().nextDouble() * Math.PI * 2;
+                        double radius = 10 + t.getRandom().nextDouble() * (29_999_000 - 10);
+                        int x = (int) (Math.cos(angle) * radius);
+                        int z = (int) (Math.sin(angle) * radius);
+                        int y = flat.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                        Mc.teleportTo(t, flat, x + 0.5, y, z + 0.5, t.getYRot(), t.getXRot());
+                    }
                     announce(ctx.game(), self, "Teleported to a superflat world:", t, ChatFormatting.GREEN);
                 }).build());
 
@@ -770,7 +1018,13 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(82, MAGENTA, ChatFormatting.LIGHT_PURPLE,
                 "Place an Amethyst Geode where you are", "Your favorite 1.21 addition")
-                .effect((ctx, self, t) -> Mc.runAt(self, "place feature minecraft:amethyst_geode")).build());
+                .effect((ctx, self, t) -> {
+                    // Loads the bundled saved structure (data/minecraft/structure/amethyst_geode.nbt),
+                    // exactly like the datapack's structure_block[mode=load] at ~ ~ ~1.
+                    Mc.placeTemplate(Mc.level(self), at(self).offset(0, 0, 1), "amethyst_geode");
+                    Mc.msg(self, "You placed an Amethyst Geode", ChatFormatting.LIGHT_PURPLE);
+                    Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
+                }).build());
 
         add(DeathSwapItem.of(83, RED, ChatFormatting.AQUA,
                 "Turn OFF /gamerule natural regeneration (or ON if it's off)", "Everyone needs a reset sometimes")
@@ -785,15 +1039,20 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(84, WHITE, ChatFormatting.WHITE,
                 "Build a Quartz maze around someone", "Severance in Minecraft")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    quartzMaze(Mc.level(t), at(t));
+                    BlockPos o = at(t);
+                    int y = o.getY();
+                    // misc/quartz_pillars ly/uy, chosen by the target's Y band (84b).
+                    int ly = y <= -55 ? -63 : y - 10;
+                    int uy = y >= 296 ? 319 : y + 24;
+                    quartzMaze(Mc.level(t), o, ly, uy);
                     announce(ctx.game(), self, "Built a Quartz maze around", t, ChatFormatting.WHITE);
                 }).build());
 
         add(DeathSwapItem.of(85, GRAY, ChatFormatting.GRAY,
                 "Turn all blocks near someone to obsidian", "Just in case you need a portal")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    BlockPos o = at(t);
-                    Mc.fill(Mc.level(t), o.offset(5, 3, 5), o.offset(-5, -2, -5), Blocks.OBSIDIAN, FillMode.NATURAL_ONLY);
+                    replaceTagged(Mc.level(t), at(t).offset(5, 3, 5), at(t).offset(-5, -2, -5),
+                            Blocks.OBSIDIAN.defaultBlockState());
                     announce(ctx.game(), self, "Turned all nearby blocks to obsidian for", t, ChatFormatting.YELLOW);
                 }).build());
 
@@ -802,12 +1061,30 @@ public final class ItemRegistry {
                 .effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(self);
                     BlockPos o = at(self);
-                    Mc.fill(lvl, o.offset(0, -3, 3), o.offset(0, 12, 3), Blocks.TUFF, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(0, -3, 5), o.offset(0, 12, 5), Blocks.TUFF, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(1, -3, 4), o.offset(1, 12, 4), Blocks.TUFF, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(-1, -3, 4), o.offset(-1, 12, 4), Blocks.TUFF, FillMode.ALL);
-                    Mc.fill(lvl, o.offset(0, -3, 2), o.offset(0, 12, 2), Blocks.LADDER, FillMode.ALL);
-                    Mc.setBlock(lvl, o.offset(0, -3, 4), Blocks.POINTED_DRIPSTONE);
+                    BlockState ladderN = Blocks.LADDER.defaultBlockState();
+                    Mc.setBlock(lvl, o.offset(0, -4, 4), Blocks.TUFF);
+                    // upper segment (y 0..12)
+                    Mc.fill(lvl, o.offset(0, 0, 3), o.offset(0, 12, 3), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(0, 0, 5), o.offset(0, 12, 5), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, 0, 4), o.offset(0, 12, 4), Mc.light(15), FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, 0, 4), o.offset(1, 12, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-1, 0, 4), o.offset(-1, 12, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, 0, 2), o.offset(0, 12, 2), ladderN, FillMode.ALL);
+                    // lower segment (y -3..0)
+                    Mc.fill(lvl, o.offset(0, -3, 3), o.offset(0, 0, 3), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(0, -3, 5), o.offset(0, 0, 5), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, -3, 4), o.offset(0, 0, 4), Mc.light(15), FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, -3, 4), o.offset(1, 0, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-1, -3, 4), o.offset(-1, 0, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, -3, 2), o.offset(0, 0, 2), ladderN, FillMode.ALL);
+                    Mc.setState(lvl, o.offset(0, -3, 4),
+                            Mc.dripstone(net.minecraft.world.level.block.state.properties.SpeleothemThickness.FRUSTUM, Direction.UP));
+                    Mc.setState(lvl, o.offset(0, -2, 4),
+                            Mc.dripstone(net.minecraft.world.level.block.state.properties.SpeleothemThickness.TIP, Direction.UP));
+                    Mc.fill(lvl, o, o.offset(0, 1, 1), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(0, 13, 2), o.offset(0, 14, 4), Blocks.AIR, FillMode.ALL);
+                    Mc.setYaw(self, 0);
+                    clearNightVisionAll(ctx);
                     Mc.msg(self, "You built a Stalagmite trap in front of you!", ChatFormatting.GOLD);
                 }).build());
 
@@ -819,7 +1096,8 @@ public final class ItemRegistry {
                     Mc.fill(lvl, new BlockPos(o.getX() + 7, -63, o.getZ() + 10),
                             new BlockPos(o.getX() - 8, -63, o.getZ() - 5), Blocks.WATER, FillMode.ALL);
                     Mc.fill(lvl, new BlockPos(o.getX() + 7, -62, o.getZ() + 10),
-                            new BlockPos(o.getX() - 8, lvl.getMaxY(), o.getZ() - 5), Blocks.AIR, FillMode.ALL);
+                            new BlockPos(o.getX() - 8, 319, o.getZ() - 5), Blocks.AIR, FillMode.ALL);
+                    clearNightVisionAll(ctx);
                     announce(ctx.game(), self, "Deleted the chunk standing in:", t, ChatFormatting.LIGHT_PURPLE);
                 }).build());
 
@@ -883,7 +1161,28 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(93, MAGENTA, ChatFormatting.GREEN,
                 "Summon a Stronghold below you", "Because the nearest regular one is 20 million blocks away")
-                .effect((ctx, self, t) -> Mc.runAt(self, "place structure minecraft:stronghold")).build());
+                .effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, 8, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, 35, o.getZ() + 20), Mc.light(4), Blocks.STONE);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, -25, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, -10, o.getZ() + 20), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.placeStructure(lvl, o, "stronghold");
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 3, o.getY() + 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 4, o.getY() - 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(-1, 0, 0), o.offset(-4, 1, 0), Mc.light(8), FillMode.ALL);
+                    Mc.birchSign(lvl, o.offset(-5, 0, 0), 12,
+                            new String[]{"Stronghold 据点", "| | | |", "| | | |", "V V V V"});
+                    Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, Component.literal("> Go down the ladder to reach the stronghold! (It's around y = at 30)")
+                            .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
 
         add(DeathSwapItem.of(94, ORANGE, ChatFormatting.WHITE,
                 "Give yourself a flint & steel & iron ingot", "Light it up, up up, light it up, up, up")
@@ -897,9 +1196,17 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    // A small quartz cell with iron-bar windows (approximates the parkour set).
-                    Mc.fill(lvl, o.offset(2, -1, 2), o.offset(-2, 4, -2), Blocks.QUARTZ_BLOCK, FillMode.NATURAL_ONLY);
-                    Mc.fill(lvl, o.offset(1, 0, 1), o.offset(-1, 3, -1), Blocks.AIR, FillMode.ALL);
+                    BlockState bars = Blocks.IRON_BARS.defaultBlockState();
+                    // One-shot: the bedrock-layer water floor and the iron-bar cell around the player.
+                    Mc.fill(lvl, new BlockPos(o.getX() + 26, -63, o.getZ() + 26),
+                            new BlockPos(o.getX() - 26, -63, o.getZ() - 26), Blocks.WATER, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(1, 0, 1), o.offset(1, 0, -1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(-1, 0, 1), o.offset(-1, 0, -1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(0, 0, 1), o.offset(0, 0, 1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(0, 0, -1), o.offset(0, 0, -1), bars, FillMode.AIR_ONLY);
+                    clearNightVisionAll(ctx);
+                    // Exact light-wall cage, built across ticks so it never freezes the server.
+                    ctx.game().addBuildJob(parkourJob(lvl, o.getX(), o.getZ()));
                     announce(ctx.game(), self, "Spawned inside of Parkour Civilization:", t, ChatFormatting.GREEN);
                 }).build());
 
@@ -930,10 +1237,18 @@ public final class ItemRegistry {
                 "Gain a monster-proof forcefield: 3 mins", "Minus well just be peaceful mode for you")
                 .effect((ctx, self, t) -> {
                     ctx.effects().apply(self, new ActiveEffect("mob_forcefield", 185 * 20, p -> {
+                        ServerLevel lvl = Mc.level(p);
                         AABB box = p.getBoundingBox().inflate(3.2);
-                        for (Monster m : Mc.level(p).getEntitiesOfClass(Monster.class, box)) {
+                        for (Monster m : lvl.getEntitiesOfClass(Monster.class, box)) {
                             m.discard();
                         }
+                        // Purple dust ring so the forcefield is visible (datapack particle).
+                        Vec3 c = p.position();
+                        int color = 0x7519FF;
+                        Mc.dust(lvl, c.x + 2.2, c.y + 1, c.z, color, 1.2f, 1, 0.1, 0.1, 1.2);
+                        Mc.dust(lvl, c.x - 2.2, c.y + 1, c.z, color, 1.2f, 1, 0.1, 0.1, 1.2);
+                        Mc.dust(lvl, c.x, c.y + 1, c.z + 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
+                        Mc.dust(lvl, c.x, c.y + 1, c.z - 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
                     }, null));
                     Mc.title(self, " ", ">> Forcefield: 3 minutes! <<", ChatFormatting.WHITE, ChatFormatting.LIGHT_PURPLE);
                 }).build());
@@ -952,11 +1267,38 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(101, LIME, ChatFormatting.GREEN,
                 "Place a Trial Chamber below you", "This is why Lena Raine joined Mojang")
-                .effect((ctx, self, t) -> Mc.runAt(self, "place structure minecraft:trial_chambers")).build());
+                .effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, 8, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, 35, o.getZ() + 20), Mc.light(4), Blocks.STONE);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, -16, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, -10, o.getZ() + 20), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.placeStructure(lvl, o, "trial_chambers");
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 3, o.getY() + 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 4, o.getY() - 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(-1, 0, 0), o.offset(-4, 1, 0), Mc.light(8), FillMode.ALL);
+                    Mc.birchSign(lvl, o.offset(-5, 0, 0), 12,
+                            new String[]{"Trial Chamber", "审判分庭", "| | | |", "V V V V"});
+                    Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, Component.literal("> Go down the ladder and you'll find the Trial Chamber! (It's around y = at 30)")
+                            .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
 
         add(DeathSwapItem.of(102, BROWN, ChatFormatting.YELLOW,
                 "Build a Woodland Mansion where you are", "The #1 target for arsonists")
-                .effect((ctx, self, t) -> Mc.runAt(self, "place structure minecraft:mansion")).build());
+                .effect((ctx, self, t) -> {
+                    Mc.placeStructure(Mc.level(self), at(self), "mansion");
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, ">> A Woodland Mansion was built near you!", ChatFormatting.YELLOW);
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
 
         add(DeathSwapItem.of(103, YELLOW, ChatFormatting.YELLOW,
                 "Make someone continuously pee: 1 min", "How much did they have to drink??")
@@ -1000,24 +1342,68 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(107, RED, ChatFormatting.RED,
                 "Summon Oppenheimer's NUCLEAR bomb on someone", "Now you are become death, destroyer of Minecrafts")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ServerLevel lvl = Mc.level(t);
-                    Vec3 p = t.position();
-                    double[][] off = {{0, 1, 0}, {2, 1, 0}, {-2, 1, 0}, {0, 1, 2}, {0, 1, -2}};
-                    for (double[] d : off) primeTnt(lvl, p, d[0], d[1], d[2], (byte) 180, 40);
+                    // The datapack nuke is TNT with explosion_power:40 (the entity's
+                    // power field has no setter, so summon via command like the datapack
+                    // does — a plain primed-TNT entity only explodes at power 4).
+                    String nbt = "{fuse:180,explosion_power:40,Tags:[\"ent\"]}";
+                    for (String pos : new String[]{"~ ~1 ~", "~2 ~1 ~", "~-2 ~1 ~", "~ ~1 ~2", "~ ~1 ~-2"}) {
+                        Mc.runAt(t, "summon tnt " + pos + " " + nbt);
+                    }
                     Mc.title(t, ">> NUKE!!! <<", "Explodes in 12 secs -- RUN!!", ChatFormatting.GOLD, ChatFormatting.RED);
                     announce(ctx.game(), self, "Summoned the Oppenheimer nuclear bomb on", t, ChatFormatting.RED);
                 }).build());
 
         add(DeathSwapItem.of(108, CYAN, ChatFormatting.WHITE,
                 "Summon an Ancient City below you", "Now you are become death, destroyer of Minecrafts")
-                .effect((ctx, self, t) -> Mc.runAt(self, "place structure minecraft:ancient_city")).build());
+                .effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    int x = o.getX(), z = o.getZ();
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -52, z - 48), new BlockPos(x + 48, -48, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -47, z - 48), new BlockPos(x + 48, -45, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -44, z - 48), new BlockPos(x + 48, -42, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -41, z - 48), new BlockPos(x + 48, -38, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.placeStructure(lvl, o, "ancient_city");
+                    Mc.fillState(lvl, new BlockPos(x - 3, o.getY() + 1, z), new BlockPos(x - 4, 0, z + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(x - 3, -1, z), new BlockPos(x - 4, -54, z + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(x - 4, o.getY() - 1, z), new BlockPos(x - 4, 0, z + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(x - 4, -1, z), new BlockPos(x - 4, -54, z + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(-1, 0, 0), o.offset(-4, 1, 0), Mc.light(8), FillMode.ALL);
+                    Mc.birchSign(lvl, o.offset(-5, 0, 0), 12,
+                            new String[]{"Ancient City", "古城", "| | | |", "V V V V"});
+                    Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, Component.literal("> Go down the ladder and you'll find the Ancient City! (May not have spawned if in the Nether or the End!)")
+                            .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true)));
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
 
         add(DeathSwapItem.of(109, ORANGE, ChatFormatting.YELLOW,
                 "Set everything around someone on fire", "We didn't start the fire...")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
-                    Mc.fill(lvl, o.offset(10, 8, 10), o.offset(-10, -5, -10), Blocks.FIRE, FillMode.AIR_ONLY);
+                    BlockState fire = Blocks.FIRE.defaultBlockState();
+                    // Four side quadrants (leaving the player's column), y -1..8, replacing air then light.
+                    Mc.fillReplace(lvl, o.offset(-10, -1, -10), o.offset(-2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(2, -1, -10), o.offset(10, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, -10), o.offset(2, 8, -2), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, 2), o.offset(2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-10, -1, -10), o.offset(-2, 8, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(2, -1, -10), o.offset(10, 8, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, -10), o.offset(2, 8, -2), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, 2), o.offset(2, 8, 10), fire, Blocks.LIGHT);
+                    // Lower band y -5..8 (air) then y -5..-2 (light).
+                    Mc.fillReplace(lvl, o.offset(-10, -5, -10), o.offset(-2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(2, -5, -10), o.offset(10, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, -10), o.offset(2, 8, -2), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, 2), o.offset(2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-10, -5, -10), o.offset(-2, -2, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(2, -5, -10), o.offset(10, -2, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, -10), o.offset(2, -2, -2), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, 2), o.offset(2, -2, 10), fire, Blocks.LIGHT);
+                    clearNightVisionAll(ctx);
                     announce(ctx.game(), self, "Set everything on fire around", t, ChatFormatting.YELLOW);
                 }).build());
 
@@ -1036,7 +1422,8 @@ public final class ItemRegistry {
                 + " shielded themself from negative items! <<", ChatFormatting.GOLD);
     }
 
-    private static void primeTnt(ServerLevel level, Vec3 p, double dx, double dy, double dz, byte fuse, int power) {
+    /** Spawn a primed TNT at default explosion power (4); higher-power nukes are summoned via command. */
+    private static void primeTnt(ServerLevel level, Vec3 p, double dx, double dy, double dz, byte fuse) {
         var tnt = Mc.summon(level, EntityTypes.TNT, p.x + dx, p.y + dy, p.z + dz);
         if (tnt != null) {
             tnt.setFuse(fuse);
@@ -1094,7 +1481,7 @@ public final class ItemRegistry {
         int[] counter = {0};
         ctx.effects().apply(victim, new ActiveEffect("earthquake", 55 * 20, p -> {
             counter[0]++;
-            p.setYRot(p.getYRot() + (counter[0] % 4 < 2 ? 0.4f : -0.4f));
+            Mc.rotateRelative(p, counter[0] % 4 < 2 ? 0.4f : -0.4f, 0f);
             if (counter[0] % 20 == 0) {
                 BlockPos o = p.blockPosition();
                 Mc.fill(Mc.level(p), o.offset(10, 8, 10), o.offset(-10, -1, -10), Blocks.GRAVEL, FillMode.NATURAL_ONLY);
@@ -1106,12 +1493,45 @@ public final class ItemRegistry {
         }, p -> Mc.msg(p, ">> The earthquake has concluded! You are safe now! <<", ChatFormatting.YELLOW)));
     }
 
-    private static void quartzMaze(ServerLevel level, BlockPos center) {
-        // Concentric quartz-brick pillars every 2 blocks out to radius 8, mimicking quartz_pillars.
-        for (int dx = -8; dx <= 8; dx += 2) {
-            for (int dz = -8; dz <= 8; dz += 2) {
-                Mc.fill(level, center.offset(dx, -1, dz), center.offset(dx, 24, dz),
-                        Blocks.QUARTZ_BRICKS, FillMode.NATURAL_ONLY);
+    /** Blocks the datapack's {@code #minecraft:pillars_blocks} tag covers. */
+    private static final Block[] PILLARS_BLOCKS = {
+            Blocks.STONE, Blocks.DIRT, Blocks.GRASS_BLOCK, Blocks.DEEPSLATE, Blocks.SAND,
+            Blocks.SHORT_GRASS, Blocks.TALL_GRASS, Blocks.AIR, Blocks.WATER, Blocks.LAVA,
+            Blocks.END_STONE, Blocks.NETHERRACK, Blocks.SOUL_SAND, Blocks.ANDESITE,
+            Blocks.DIORITE, Blocks.SNOW, Blocks.GRANITE
+    };
+
+    private static boolean isPillarsBlock(BlockState s) {
+        for (Block b : PILLARS_BLOCKS) {
+            if (s.is(b)) return true;
+        }
+        return false;
+    }
+
+    /** A vertical quartz-brick column placed only over {@code pillars_blocks}, like {@code quartz_pillars}. */
+    private static void quartzColumn(ServerLevel level, int x, int z, int y1, int y2) {
+        BlockState q = Blocks.QUARTZ_BRICKS.defaultBlockState();
+        BlockPos.MutableBlockPos cur = new BlockPos.MutableBlockPos();
+        for (int y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+            cur.set(x, y, z);
+            if (isPillarsBlock(level.getBlockState(cur))) {
+                level.setBlock(cur, q, Block.UPDATE_CLIENTS);
+            }
+        }
+    }
+
+    /** Exact {@code misc/quartz_pillars}: concentric square pillar rings (radius 2..14) + lit centre. */
+    private static void quartzMaze(ServerLevel level, BlockPos o, int ly, int uy) {
+        quartzColumn(level, o.getX(), o.getZ(), 2, uy);                   // centre column (abs y=2..uy)
+        level.setBlock(o.offset(0, -1, 0), Blocks.QUARTZ_BRICKS.defaultBlockState(), Block.UPDATE_CLIENTS);
+        Mc.fillState(level, o, o.offset(0, 1, 0), Mc.light(15), FillMode.ALL);
+        for (int r = 2; r <= 14; r += 2) {
+            for (int dx = -r; dx <= r; dx += 2) {
+                for (int dz = -r; dz <= r; dz += 2) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) == r) {
+                        quartzColumn(level, o.getX() + dx, o.getZ() + dz, ly, uy);
+                    }
+                }
             }
         }
     }

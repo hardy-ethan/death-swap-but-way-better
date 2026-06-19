@@ -43,6 +43,26 @@ public final class DeathSwapCommands {
                             game.forceReturnToHub();
                             return 1;
                         }))
+                // ---- admin: give an item by id ----
+                .then(Commands.literal("give")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.argument("id", IntegerArgumentType.integer(1))
+                                .executes(ctx -> {
+                                    ServerPlayer player = ctx.getSource().getPlayer();
+                                    if (player == null) {
+                                        ctx.getSource().sendFailure(
+                                                Component.literal("Only a player can receive an item."));
+                                        return 0;
+                                    }
+                                    int id = IntegerArgumentType.getInteger(ctx, "id");
+                                    if (!game.items().giveById(player, id)) {
+                                        ctx.getSource().sendFailure(Component.literal(
+                                                "No item with id " + id + " (valid: 1.."
+                                                        + game.items().maxItemId() + ")."));
+                                        return 0;
+                                    }
+                                    return 1;
+                                })))
                 // ---- admin: rules ----
                 .then(Commands.literal("set")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -100,7 +120,7 @@ public final class DeathSwapCommands {
                                 return 0;
                             }
                             data.canTpAway = false;
-                            game.spreadFarAway(player);
+                            game.spreadFarAway(player, true);
                             return 1;
                         }))
                 // ---- player: item target selection ----

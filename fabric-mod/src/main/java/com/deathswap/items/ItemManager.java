@@ -29,10 +29,14 @@ import java.util.List;
 public final class ItemManager {
 
     private static final String NBT_ITEM_ID = "ds_item_id";
+    private static final String NBT_LOCKED = "ds_locked";
     private static final int[] HOTBAR_SLOTS = {6, 7, 8};
 
     private final GameManager game;
     private final ItemRegistry registry = new ItemRegistry();
+
+    /** Round-robin pointer over alive players for the "one offer per interval" clock. */
+    private int rotation = 0;
 
     public ItemManager(GameManager game) {
         this.game = game;
@@ -43,15 +47,34 @@ public final class ItemManager {
     }
 
     public void tick() {
-        // Reserved for per-tick item bookkeeping (currently effects self-manage).
+        // Keep the three powerup slots locked with filler whenever a player isn't
+        // mid-choice, so they can't be used for storage and the offer always lands
+        // in a predictable place.
+        for (ServerPlayer player : game.alivePlayers()) {
+            maintainLockedSlots(player);
+        }
     }
 
     // ---- offering ----
 
-    public void offerToAll() {
-        for (ServerPlayer player : game.alivePlayers()) {
-            offer(player);
+    /**
+     * Hand a fresh set of items to the next player in rotation. The datapack
+     * offers to exactly one player per interval (round-robin), not everyone at
+     * once — offering to all is what made items feel far too frequent.
+     */
+    public void offerNext() {
+        List<ServerPlayer> alive = new ArrayList<>(game.alivePlayers());
+        if (alive.isEmpty()) {
+            return;
         }
+        alive.sort(java.util.Comparator.comparingInt(p -> game.data(p).permPNo));
+        rotation = (rotation + 1) % alive.size();
+        ServerPlayer player = alive.get(rotation);
+        if (game.effects().hasEffect(player.getUUID(), "blockedItems")) {
+            Mc.msg(player, "** Items blocked!", ChatFormatting.RED);
+            return;
+        }
+        offer(player);
     }
 
     public void offer(ServerPlayer player) {
@@ -71,6 +94,83 @@ public final class ItemManager {
         Mc.msg(player, "<< You got a new set of items! They will expire in 45 seconds if "
                 + "you don't use one of them! You can only use one! >>", ChatFormatting.GREEN);
         Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
+    }
+
+    // ---- locked powerup slots ----
+
+    /**
+     * Force the three powerup slots to hold an immovable filler item whenever the
+     * player isn't actively choosing from an offer, and remove any filler that
+     * leaked into another slot. Re-running every tick is what makes it "immovable":
+     * anything the player drops in is overwritten, and the filler always returns.
+     */
+    private void maintainLockedSlots(ServerPlayer player) {
+        boolean choosing = game.data(player).choosingItem;
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (isPowerupSlot(slot)) {
+                // While choosing, the dye offer occupies these slots — leave it be.
+                if (!choosing && !isLocked(stack)) {
+                    inventory.setItem(slot, buildLockedFiller());
+                }
+            } else if (isLocked(stack)) {
+                inventory.setItem(slot, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    private static boolean isPowerupSlot(int slot) {
+        for (int s : HOTBAR_SLOTS) {
+            if (s == slot) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isLocked(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data != null && data.copyTag().getBooleanOr(NBT_LOCKED, false);
+    }
+
+    /** The useless, immovable placeholder that sits in the powerup slots. */
+    private ItemStack buildLockedFiller() {
+        ItemStack stack = new ItemStack(Items.BARRIER);
+        stack.set(DataComponents.CUSTOM_NAME,
+                Component.literal("Powerup slot — items appear here")
+                        .withStyle(ChatFormatting.DARK_GRAY).withStyle(s -> s.withItalic(false)));
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean(NBT_LOCKED, true);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        return stack;
+    }
+
+    /**
+     * Admin helper: give a player a single death-swap item by its id, ready to
+     * use. Places the dyed display stack in the first offer slot and arms the
+     * choosing state so dropping it fires the effect (or opens target selection).
+     * Returns false if no item has that id.
+     */
+    public boolean giveById(ServerPlayer player, int id) {
+        DeathSwapItem item = registry.byId(id);
+        if (item == null) {
+            return false;
+        }
+        PlayerData data = game.data(player);
+        data.offeredItems = new DeathSwapItem[]{item};
+        data.choosingItem = true;
+        data.pendingTargetItem = null;
+        player.getInventory().setItem(HOTBAR_SLOTS[0], buildDye(item));
+        Mc.msg(player, "Given item #" + id + " (" + item.name + ") -- drop it to use.",
+                ChatFormatting.GREEN);
+        Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
+        return true;
+    }
+
+    /** Highest registered item id (ids run 1..N). */
+    public int maxItemId() {
+        return registry.size();
     }
 
     /** Build the dyed display item exactly as the datapack's items/items/* do. */
@@ -103,6 +203,10 @@ public final class ItemManager {
      * offer item (in which case the real drop is cancelled).
      */
     public boolean onItemDropped(ServerPlayer player, ItemStack stack) {
+        // A dropped filler is a no-op: swallow it so the powerup slot just refills.
+        if (isLocked(stack)) {
+            return true;
+        }
         int id = itemIdOf(stack);
         if (id < 0) {
             return false;
@@ -226,10 +330,16 @@ public final class ItemManager {
     // ---- cleanup ----
 
     private void clearOfferStacks(ServerPlayer player) {
+        // Restore the locked filler immediately rather than leaving the slots
+        // empty. If we cleared them to EMPTY, an effect that gives items (via
+        // Inventory.add) would drop those items into these now-free slots, and
+        // the next maintainLockedSlots tick would overwrite them with filler —
+        // silently erasing the powerup's reward. Re-locking synchronously keeps
+        // the slots occupied so given items land elsewhere.
         for (int slot : HOTBAR_SLOTS) {
             ItemStack stack = player.getInventory().getItem(slot);
             if (itemIdOf(stack) >= 0) {
-                player.getInventory().setItem(slot, ItemStack.EMPTY);
+                player.getInventory().setItem(slot, buildLockedFiller());
             }
         }
     }
@@ -241,6 +351,6 @@ public final class ItemManager {
     }
 
     public boolean isOfferStack(ItemStack stack) {
-        return itemIdOf(stack) >= 0;
+        return itemIdOf(stack) >= 0 || isLocked(stack);
     }
 }

@@ -1,6 +1,7 @@
 package com.deathswap.game;
 
 import com.deathswap.items.DeathSwapItem;
+import net.minecraft.core.BlockPos;
 
 import java.util.UUID;
 
@@ -41,6 +42,15 @@ public final class PlayerData {
     /** Emergency "/deathswap tpaway" availability (datapack {@code tp_away} trigger). */
     public boolean canTpAway;
 
+    /**
+     * The initial spread location set as this player's spawn point at game start
+     * (datapack {@code spawnpoint @s ~ ~ ~} in game_start.mcfunction). On death the
+     * player is returned here, just as a vanilla death respawns them at their
+     * spawn point. Null until the player has been spread.
+     */
+    public BlockPos spawnPos;
+    public float spawnYaw;
+
     // ---- item offering state ----
 
     /** The three items currently offered to this player, or null when none. */
@@ -76,6 +86,8 @@ public final class PlayerData {
         winner = false;
         deathImmunityTicks = 0;
         canTpAway = false;
+        spawnPos = null;
+        spawnYaw = 0.0f;
         clearOffer();
     }
 }

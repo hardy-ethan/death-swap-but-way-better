@@ -5,6 +5,7 @@ import com.deathswap.game.GameManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -48,6 +49,10 @@ public final class DeathSwapMod implements ModInitializer {
             }
             return true;
         });
+
+        // Re-give the starter kit if a player respawns with an empty inventory.
+        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) ->
+                GAME.onPlayerRespawn(newPlayer));
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 DeathSwapCommands.register(dispatcher, GAME));
