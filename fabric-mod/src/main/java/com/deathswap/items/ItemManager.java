@@ -146,6 +146,33 @@ public final class ItemManager {
         return stack;
     }
 
+    /**
+     * Admin helper: give a player a single death-swap item by its id, ready to
+     * use. Places the dyed display stack in the first offer slot and arms the
+     * choosing state so dropping it fires the effect (or opens target selection).
+     * Returns false if no item has that id.
+     */
+    public boolean giveById(ServerPlayer player, int id) {
+        DeathSwapItem item = registry.byId(id);
+        if (item == null) {
+            return false;
+        }
+        PlayerData data = game.data(player);
+        data.offeredItems = new DeathSwapItem[]{item};
+        data.choosingItem = true;
+        data.pendingTargetItem = null;
+        player.getInventory().setItem(HOTBAR_SLOTS[0], buildDye(item));
+        Mc.msg(player, "Given item #" + id + " (" + item.name + ") -- drop it to use.",
+                ChatFormatting.GREEN);
+        Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
+        return true;
+    }
+
+    /** Highest registered item id (ids run 1..N). */
+    public int maxItemId() {
+        return registry.size();
+    }
+
     /** Build the dyed display item exactly as the datapack's items/items/* do. */
     private ItemStack buildDye(DeathSwapItem item) {
         ItemStack stack = new ItemStack(Items.DYE.asList().get(item.dye.ordinal()));
