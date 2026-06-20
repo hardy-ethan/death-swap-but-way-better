@@ -32,9 +32,8 @@ public final class DeathSwapCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildCommandTree(GameManager game) {
         return Commands.literal("deathswap")
-                // ---- admin: lobby / flow ----
+                // ---- lobby / flow ----
                 .then(Commands.literal("start")
-                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> {
                             if (game.phase() != GamePhase.HUB ) {
                                 ctx.getSource().sendFailure(Component.literal(
@@ -49,16 +48,14 @@ public final class DeathSwapCommands {
                             return 0;
                         }))
                 .then(Commands.literal("stop")
-                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> {
                             game.broadcast(">> Game stopped by an operator. <<", ChatFormatting.RED);
                             game.forceReturnToHub();
                             return 1;
                         }))
-                // ---- admin: free region files + re-roll the seed (shuts the server
+                // ---- free region files + re-roll the seed (shuts the server
                 //      down; an external restart wrapper brings it back on the new seed) ----
                 .then(Commands.literal("resetworld")
-                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .executes(ctx -> {
                             Component reason = Component.literal(
                                     "Resetting the world (new seed). The server is restarting. Please "
@@ -91,9 +88,8 @@ public final class DeathSwapCommands {
                                     }
                                     return 1;
                                 })))
-                // ---- admin: rules ----
+                // ---- rules ----
                 .then(Commands.literal("set")
-                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.literal("lives")
                                 .then(Commands.argument("n", IntegerArgumentType.integer(1, 6))
                                         .executes(ctx -> {
