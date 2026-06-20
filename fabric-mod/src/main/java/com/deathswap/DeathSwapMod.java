@@ -1,5 +1,6 @@
 package com.deathswap;
 
+import com.deathswap.config.DeathSwapConfig;
 import com.deathswap.game.DeathSwapCommands;
 import com.deathswap.game.GameManager;
 import com.deathswap.items.ItemManager;
@@ -34,6 +35,8 @@ public final class DeathSwapMod implements ModInitializer {
     @Override
     public void onInitialize() {
         LOGGER.info("Death Swap But Way Better — initialising");
+
+        DeathSwapConfig.load();
 
         ServerLifecycleEvents.SERVER_STARTED.register(GAME::onServerStarted);
 

@@ -1,8 +1,11 @@
 package com.deathswap.game;
 
+import com.deathswap.config.DeathSwapConfig;
+import com.deathswap.config.DiscordWebhook;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -117,7 +120,37 @@ public final class DeathSwapCommands {
                                     game.items().onTargetSelected(player,
                                             IntegerArgumentType.getInteger(ctx, "permNo"));
                                     return 1;
-                                }))));
+                                })))
+                // ---- player: report to the Discord webhook ----
+                .then(Commands.literal("report")
+                        .then(Commands.argument("message", StringArgumentType.greedyString())
+                                .executes(ctx -> report(ctx,
+                                        StringArgumentType.getString(ctx, "message"))))));
+    }
+
+    private static int report(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+                                 String message) {
+        CommandSourceStack source = ctx.getSource();
+        if (DeathSwapConfig.discordWebhookUrl().isBlank()) {
+            source.sendFailure(Component.literal(
+                    "Reporting is not configured (set discordWebhookUrl in config/deathswap.json)."));
+            return 0;
+        }
+
+        String reporter = source.getTextName();
+        DiscordWebhook.send("From `" + reporter + "`:\n" + message)
+                // The webhook completes off-thread; bounce back onto the server
+                // thread before touching the command source.
+                .thenAccept(ok -> source.getServer().execute(() -> {
+                    if (ok) {
+                        source.sendSuccess(() -> Component.literal("Report sent. Thanks!")
+                                .withStyle(ChatFormatting.GREEN), false);
+                    } else {
+                        source.sendFailure(Component.literal(
+                                "Failed to send report. Please try again later."));
+                    }
+                }));
+        return 1;
     }
 
     private static int ack(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx, String msg) {
