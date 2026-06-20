@@ -31,7 +31,11 @@ public final class SettingsStore {
     /**
      * Load saved settings into {@code target}, leaving any field absent from the
      * file at its current (default) value. Writes a fresh file with defaults if
-     * none exists yet. Always clamps the result to legal values.
+     * none exists yet.
+     *
+     * @throws IllegalStateException if the file holds out-of-range values
+     *         (see {@link GameSettings#validate()}); parse/IO errors fall back
+     *         to defaults instead.
      */
     public static void load(GameSettings target) {
         Path path = path();
@@ -40,26 +44,28 @@ public final class SettingsStore {
             DeathSwapMod.LOGGER.info("Wrote default game settings to {}", path);
             return;
         }
+        GameSettings saved;
         try {
-            GameSettings saved = GSON.fromJson(Files.readString(path), GameSettings.class);
-            if (saved != null) {
-                target.maxLives = saved.maxLives;
-                target.swapIntervalSeconds = saved.swapIntervalSeconds;
-                target.firstSwapSeconds = saved.firstSwapSeconds;
-                target.randomCycle = saved.randomCycle;
-                target.pvp = saved.pvp;
-                target.hunger = saved.hunger;
-                target.showSwapTimer = saved.showSwapTimer;
-                target.startWithBasicTools = saved.startWithBasicTools;
-                target.naturalRegen = saved.naturalRegen;
-                if (saved.swapWarning != null) {
-                    target.swapWarning = saved.swapWarning;
-                }
-            }
+            saved = GSON.fromJson(Files.readString(path), GameSettings.class);
         } catch (IOException | RuntimeException e) {
             DeathSwapMod.LOGGER.warn("Failed to read game settings {} — using defaults", path, e);
+            return;
         }
-        target.clampToLegalValues();
+        if (saved != null) {
+            saved.validate();
+            target.maxLives = saved.maxLives;
+            target.swapIntervalSeconds = saved.swapIntervalSeconds;
+            target.firstSwapSeconds = saved.firstSwapSeconds;
+            target.randomCycle = saved.randomCycle;
+            target.pvp = saved.pvp;
+            target.hunger = saved.hunger;
+            target.showSwapTimer = saved.showSwapTimer;
+            target.startWithBasicTools = saved.startWithBasicTools;
+            target.naturalRegen = saved.naturalRegen;
+            if (saved.swapWarning != null) {
+                target.swapWarning = saved.swapWarning;
+            }
+        }
     }
 
     /** Write the current settings to disk. Safe to call after every change. */

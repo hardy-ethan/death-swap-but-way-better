@@ -520,7 +520,7 @@ public final class GameManager {
 
     /** Begin a game with everyone currently in the hub. */
     public boolean startGame() {
-        settings.clampToLegalValues();
+        settings.validate();
         List<ServerPlayer> participants = new ArrayList<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerData data = data(player);

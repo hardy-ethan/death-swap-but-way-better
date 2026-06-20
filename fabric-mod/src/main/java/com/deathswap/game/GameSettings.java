@@ -65,9 +65,20 @@ public final class GameSettings {
         return language == Language.CHINESE;
     }
 
-    public void clampToLegalValues() {
-        maxLives = Math.max(1, Math.min(6, maxLives));
-        swapIntervalSeconds = Math.max(30, Math.min(300, swapIntervalSeconds));
-        firstSwapSeconds = Math.max(30, Math.min(600, firstSwapSeconds));
+    /**
+     * @throws IllegalStateException if any numeric setting is outside its legal range.
+     */
+    public void validate() {
+        requireInRange("lives", maxLives, 1, 6);
+        requireInRange("swap interval (seconds)", swapIntervalSeconds, 30, 300);
+        requireInRange("first swap (seconds)", firstSwapSeconds, 30, 600);
+    }
+
+    private static void requireInRange(String name, int value, int minInclusive, int maxInclusive) {
+        if (value < minInclusive || value > maxInclusive) {
+            throw new IllegalStateException(
+                    name + " must be between " + minInclusive + " and " + maxInclusive
+                            + ", but was " + value);
+        }
     }
 }
