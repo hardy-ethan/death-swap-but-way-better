@@ -148,6 +148,47 @@ public final class DeathSwapCommands {
                                             game.persistSettings();
                                             return ack(ctx, "Swap warning = "
                                                     + game.settings().swapWarning.seconds + "s");
+                                        })))
+                        .then(Commands.literal("showtimer")
+                                .then(Commands.argument("on", BoolArgumentType.bool())
+                                        .executes(ctx -> {
+                                            game.settings().showSwapTimer = BoolArgumentType.getBool(ctx, "on");
+                                            game.persistSettings();
+                                            return ack(ctx, "Show swap timer = " + game.settings().showSwapTimer);
+                                        })))
+                        .then(Commands.literal("starttools")
+                                .then(Commands.argument("on", BoolArgumentType.bool())
+                                        .executes(ctx -> {
+                                            game.settings().startWithBasicTools = BoolArgumentType.getBool(ctx, "on");
+                                            game.persistSettings();
+                                            return ack(ctx, "Start with basic tools = "
+                                                            + game.settings().startWithBasicTools);
+                                        })))
+                        .then(Commands.literal("naturalregen")
+                                .then(Commands.argument("on", BoolArgumentType.bool())
+                                        .executes(ctx -> {
+                                            game.settings().naturalRegen = BoolArgumentType.getBool(ctx, "on");
+                                            game.persistSettings();
+                                            return ack(ctx, "Natural regen = " + game.settings().naturalRegen);
+                                        })))
+                        .then(Commands.literal("keepinventory")
+                                .then(Commands.argument("on", BoolArgumentType.bool())
+                                        .executes(ctx -> {
+                                            game.settings().keepInventory = BoolArgumentType.getBool(ctx, "on");
+                                            game.persistSettings();
+                                            return ack(ctx, "Keep inventory = " + game.settings().keepInventory);
+                                        })))
+                        .then(Commands.literal("language")
+                                .then(Commands.argument("lang", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            String lang = StringArgumentType.getString(ctx, "lang");
+                                            if (lang.equalsIgnoreCase("chinese") || lang.equalsIgnoreCase("zh")) {
+                                                    game.settings().language = GameSettings.Language.CHINESE;
+                                            } else {
+                                                    game.settings().language = GameSettings.Language.ENGLISH;
+                                            }
+                                            game.persistSettings();
+                                            return ack(ctx, "Language = " + game.settings().language);
                                         }))))
                 // ---- player: item target selection ----
                 .then(Commands.literal("target")
