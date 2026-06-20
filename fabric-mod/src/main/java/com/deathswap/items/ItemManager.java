@@ -299,12 +299,15 @@ public final class ItemManager {
 
         // Every alive player is listed by their permanent number (yourself
         // included, as in the datapack's select_template). Shielded players are
-        // shown struck-through but are NOT offered as a clickable option.
+        // shown struck-through but are NOT offered as a clickable option — except
+        // yourself, who can always be targeted (a shield blocks others' items, not
+        // your own).
         MutableComponent line = Component.literal("");
         MutableComponent shieldedNote = Component.literal("");
         boolean anyShielded = false;
         for (ServerPlayer p : game.alivePlayers()) {
-            boolean shielded = game.effects().hasEffect(p.getUUID(), "shield");
+            boolean shielded = game.effects().hasEffect(p.getUUID(), "shield")
+                    && !p.getUUID().equals(player.getUUID());
             MutableComponent chip = Component.literal("[ " + p.getName().getString() + " ]  ");
             if (shielded) {
                 chip.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.STRIKETHROUGH);
@@ -336,8 +339,12 @@ public final class ItemManager {
         }
         ServerPlayer target = game.playerByPermNo(permNo);
         // Shielded/eliminated players aren't offered as options; guard anyway and
-        // keep the item pending so a valid chip can still be clicked.
-        if (target == null || game.effects().hasEffect(target.getUUID(), "shield")) {
+        // keep the item pending so a valid chip can still be clicked. You can
+        // always target yourself, even while shielded.
+        boolean shieldedOther = target != null
+                && !target.getUUID().equals(player.getUUID())
+                && game.effects().hasEffect(target.getUUID(), "shield");
+        if (target == null || shieldedOther) {
             Mc.msg(player, Translator.translate(game.settings().isChinese(),
                     ">> That player can't be targeted. <<"), ChatFormatting.RED);
             return;

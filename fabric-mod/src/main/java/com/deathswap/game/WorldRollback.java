@@ -72,6 +72,9 @@ public final class WorldRollback {
         if (restoring) {
             return;
         }
+        if (level.dimension() != Level.END) {
+            return; // only the End is rolled back; leave overworld/nether changes alone
+        }
         Map<Long, Saved> map = snapshots.computeIfAbsent(level.dimension(), k -> new HashMap<>());
         long key = pos.asLong();
         if (map.containsKey(key)) {

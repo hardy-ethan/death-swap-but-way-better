@@ -106,25 +106,6 @@ public final class DeathSwapCommands {
                                             return ack(ctx, "Swap warning = "
                                                     + game.settings().swapWarning.seconds + "s");
                                         }))))
-                // ---- player: emergency teleport ----
-                .then(Commands.literal("tpaway")
-                        .executes(ctx -> {
-                            ServerPlayer player = ctx.getSource().getPlayer();
-                            if (player == null) {
-                                return 0;
-                            }
-                            PlayerData data = game.data(player);
-                            if (!data.canTpAway) {
-                                ctx.getSource().sendFailure(Component.literal(
-                                        "You can't teleport away right now."));
-                                return 0;
-                            }
-                            data.canTpAway = false;
-                            // Emergency teleport is a momentary escape, not a new spawn:
-                            // a later death should still return to the initial spread.
-                            game.spreadFarAway(player);
-                            return 1;
-                        }))
                 // ---- player: item target selection ----
                 .then(Commands.literal("target")
                         .then(Commands.argument("permNo", IntegerArgumentType.integer(1, 12))

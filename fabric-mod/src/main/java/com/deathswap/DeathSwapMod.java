@@ -48,7 +48,7 @@ public final class DeathSwapMod implements ModInitializer {
         // Intercept player deaths to run the lives/elimination logic.
         ServerLivingEntityEvents.ALLOW_DEATH.register((entity, source, amount) -> {
             if (entity instanceof ServerPlayer player) {
-                return GAME.onAllowDeath(player);
+                return GAME.onAllowDeath(player, source);
             }
             return true;
         });
@@ -61,6 +61,12 @@ public final class DeathSwapMod implements ModInitializer {
         // Cancel any attempt to place it so players can't build with it.
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
             if (ItemManager.isLocked(player.getItemInHand(hand))) {
+                // FAIL cancels server-side placement, but the client has already
+                // predicted the use and emptied the slot. Resync the inventory so
+                // the barrier filler stays in the hotbar.
+                if (player instanceof ServerPlayer serverPlayer) {
+                    serverPlayer.containerMenu.sendAllDataToRemote();
+                }
                 return InteractionResult.FAIL;
             }
             return InteractionResult.PASS;

@@ -43,7 +43,6 @@ public final class GameSettings {
     public boolean hunger = true;
     public boolean showSwapTimer = true;
     public boolean startWithBasicTools = true;
-    public boolean keepInventory = true;
     public boolean naturalRegen = true;
 
     public SwapWarning swapWarning = SwapWarning.TEN_SECONDS;

@@ -1283,17 +1283,6 @@ public final class ItemRegistry {
                     Mc.title(self, " ", tr(ctx, ">> NO FALL DAMAGE! 5 Mins <<"), ChatFormatting.WHITE, ChatFormatting.YELLOW);
                 }).build());
 
-        add(DeathSwapItem.of(92, PURPLE, ChatFormatting.RED,
-                "Make someone's ears bleed (HEADPHONE WARNING!)", "WHAT DID YOU SAY???!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    ctx.effects().apply(t, new ActiveEffect("ears_bleed", 45 * 20, p -> {
-                        Mc.playSound(p, SoundEvents.ENDER_DRAGON_GROWL, 99f, 1.0f);
-                        Mc.playSound(p, SoundEvents.WITHER_AMBIENT, 99f, 1.0f);
-                    }, null));
-                    Mc.title(t, " ", tr(ctx, ">> YOU CAN'T HEAR ANYTHING! 45 secs <<"), ChatFormatting.WHITE, ChatFormatting.RED);
-                    announce(ctx.game(), self, "Made the ears bleed for 45 seconds:", t, ChatFormatting.RED);
-                }).build());
-
         add(DeathSwapItem.of(93, MAGENTA, ChatFormatting.GREEN,
                 "Summon a Stronghold below you", "Because the nearest regular one is 20 million blocks away")
                 .effect((ctx, self, t) -> {

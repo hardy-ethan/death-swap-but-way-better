@@ -5,14 +5,23 @@ import com.deathswap.effects.EffectManager;
 import com.deathswap.items.ItemManager;
 import com.deathswap.util.Mc;
 import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -389,6 +398,9 @@ public final class GameManager {
         // rolled back to this point when it ends.
         worldRollback.begin();
 
+        // Every round starts with a clean advancement book for everyone.
+        clearAllAdvancements();
+
         if (isNight) {
             Mc.runServer(server, "time set noon");
         }
@@ -546,7 +558,7 @@ public final class GameManager {
      * Called from the death mixin/event. Returns true if the death should be
      * allowed to proceed, false to cancel it (the player survives).
      */
-    public boolean onAllowDeath(ServerPlayer player) {
+    public boolean onAllowDeath(ServerPlayer player, DamageSource source) {
         if (phase != GamePhase.RUNNING) {
             return true;
         }
@@ -559,6 +571,15 @@ public final class GameManager {
         if (data.deathImmunityTicks > 0) {
             survive(player);
             return false;
+        }
+
+        // If the player is holding a Totem of Undying (and the damage isn't a kind
+        // that bypasses it), let vanilla's death handling run: returning true keeps
+        // the isDeadOrDying() branch alive in hurtServer, so checkTotemDeathProtection
+        // pops the totem, restores 1 health and applies its effects. No life is lost.
+        // We must not handle the death ourselves here, or the totem would be skipped.
+        if (hasTotem(player, source)) {
+            return true;
         }
 
         data.lives--;
@@ -577,7 +598,26 @@ public final class GameManager {
             survive(player);
         }
         updateSidebar();
-        return false; // we always handle death ourselves
+        return false; // we handle this death ourselves
+    }
+
+    /**
+     * Mirror vanilla {@code LivingEntity.checkTotemDeathProtection}: a death is
+     * deflected by a totem only when the damage doesn't bypass invulnerability and
+     * the player holds an item carrying the {@code DEATH_PROTECTION} component in
+     * either hand. We don't consume the item here; vanilla does that once we let
+     * the death proceed.
+     */
+    private boolean hasTotem(ServerPlayer player, DamageSource source) {
+        if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+            return false;
+        }
+        for (InteractionHand hand : InteractionHand.values()) {
+            if (player.getItemInHand(hand).has(DataComponents.DEATH_PROTECTION)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -598,6 +638,15 @@ public final class GameManager {
         player.setHealth(player.getMaxHealth());
         player.clearFire();
         player.fallDistance = 0.0f;
+        // We cancel vanilla death, so the inventory is never dropped automatically.
+        // Honour the keepInventory gamerule ourselves: when it's off, drop everything
+        // at the death location (before we teleport the player away).
+        if (!server.getGameRules().get(GameRules.KEEP_INVENTORY)) {
+            dropInventory(player);
+        }
+        // A vanilla respawn clears all active effects; emulate that since the death
+        // was cancelled.
+        player.removeAllEffects();
         // Death returns the player to their initial spread location (their spawn
         // point), just as a vanilla death respawns them at the spawn point set in
         // game_start.mcfunction (spawnpoint @s ~ ~ ~). We emulate the death rather
@@ -610,7 +659,25 @@ public final class GameManager {
         }
         // player_died.mcfunction: effect give @s minecraft:resistance 10 5.
         Mc.effect(player, MobEffects.RESISTANCE, 10, 5);
+        // Respawn-fresh hunger.
         player.getFoodData().setFoodLevel(20);
+        player.getFoodData().setSaturation(5.0f);
+    }
+
+    /**
+     * Drop every item in the player's inventory at their feet, then empty it. The
+     * immovable barrier filler in the powerup slots is left untouched — it's UI
+     * furniture, not loot, and must stay in place for the item system.
+     */
+    private void dropInventory(ServerPlayer player) {
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (!stack.isEmpty() && !ItemManager.isLocked(stack)) {
+                player.drop(stack, true, false);
+                inventory.setItem(slot, ItemStack.EMPTY);
+            }
+        }
     }
 
     private void eliminate(ServerPlayer player) {
@@ -694,6 +761,9 @@ public final class GameManager {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
         }
+        // Wipe everyone's advancements so nothing earned during the round carries
+        // into the lobby or the next game.
+        clearAllAdvancements();
         // Now that everyone is safely back in the hub, undo every block change the
         // game made so the shared world is restored to how it looked before the round.
         int restored = worldRollback.rollback(server);
@@ -720,6 +790,55 @@ public final class GameManager {
             }
         }
         scoreboard.updateLives(participants, p -> data(p).lives);
+    }
+
+    /**
+     * Wipe every player's advancements, online and offline, so each game starts
+     * and ends with a clean advancement book and nothing carries over between
+     * rounds. Online players are cleared through their live {@link PlayerAdvancements}
+     * (the change is pushed to their client and persisted on logout); offline
+     * players have their saved advancement files deleted from disk, since their
+     * progress only lives there while they're away.
+     */
+    private void clearAllAdvancements() {
+        var allAdvancements = server.getAdvancements().getAllAdvancements();
+        java.util.Set<UUID> online = new java.util.HashSet<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            online.add(player.getUUID());
+            PlayerAdvancements progress = player.getAdvancements();
+            for (AdvancementHolder holder : allAdvancements) {
+                for (String criterion : holder.value().criteria().keySet()) {
+                    progress.revoke(holder, criterion);
+                }
+            }
+            // Push the revocations to the client now rather than waiting for the
+            // next tick's flush, so the advancement screen updates immediately.
+            progress.flushDirty(player, true);
+        }
+
+        // Offline players: their advancements exist only as <uuid>.json files on
+        // disk. Delete those; skip online players, whose live data (handled above)
+        // would otherwise just rewrite the file on their next logout.
+        java.nio.file.Path dir = server.getWorldPath(LevelResource.PLAYER_ADVANCEMENTS_DIR);
+        if (!java.nio.file.Files.isDirectory(dir)) {
+            return;
+        }
+        try (var files = java.nio.file.Files.newDirectoryStream(dir, "*.json")) {
+            for (java.nio.file.Path file : files) {
+                String fileName = file.getFileName().toString();
+                UUID uuid;
+                try {
+                    uuid = UUID.fromString(fileName.substring(0, fileName.length() - ".json".length()));
+                } catch (IllegalArgumentException notAPlayerFile) {
+                    continue;
+                }
+                if (!online.contains(uuid)) {
+                    java.nio.file.Files.deleteIfExists(file);
+                }
+            }
+        } catch (java.io.IOException e) {
+            DeathSwapMod.LOGGER.warn("Failed to clear offline player advancements", e);
+        }
     }
 
     public List<ServerPlayer> alivePlayers() {
