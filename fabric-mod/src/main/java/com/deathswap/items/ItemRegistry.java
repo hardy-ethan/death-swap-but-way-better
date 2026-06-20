@@ -1552,8 +1552,23 @@ public final class ItemRegistry {
                         // setblock ~ ~ ~ water[level=2]: flowing water at the feet that
                         // decays/flows away on its own (the update lets it tick to air),
                         // so it leaves a brief stream rather than flooding the world.
-                        if (Mc.level(p).getBlockState(p.blockPosition()).isAir()) {
-                            Mc.setState(Mc.level(p), p.blockPosition(), Mc.flowingWater(2));
+                        ServerLevel lvl = Mc.level(p);
+                        BlockPos feet = p.blockPosition();
+                        if (lvl.getBlockState(feet).isAir()) {
+                            Mc.setState(lvl, feet, Mc.flowingWater(2));
+                        }
+                        if (!p.onGround()) {
+                            return;
+                        }
+                        BlockPos below = feet.below();
+                        VoxelShape shape = lvl.getBlockState(below).getCollisionShape(lvl, below);
+                        if (shape.isEmpty()) {
+                            return;
+                        }
+                        Mc.setBlockFast(lvl, below, Blocks.WOOL.yellow());
+                        double woolTop = below.getY() + 1;
+                        if (p.getY() < woolTop) {
+                            Mc.teleport(p, p.getX(), woolTop, p.getZ());
                         }
                     }, null));
                     Mc.title(t, " ", translate(ctx, "You are peeing..."), ChatFormatting.WHITE, ChatFormatting.YELLOW);
