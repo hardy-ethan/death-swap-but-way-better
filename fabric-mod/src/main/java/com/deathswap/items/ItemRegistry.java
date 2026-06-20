@@ -111,7 +111,7 @@ public final class ItemRegistry {
     }
 
     /** Localize an in-game effect string for the current game language. */
-    private static String tr(ItemContext ctx, String en) {
+    private static String translate(ItemContext ctx, String en) {
         return Translator.translate(ctx.game().settings().isChinese(), en);
     }
 
@@ -329,7 +329,7 @@ public final class ItemRegistry {
                     ctx.game().addGravelTower(lvl, o.getX() + 3, o.getY() + 3, o.getZ());
                     Mc.setYaw(self, -90);
                     clearNightVisionAll(ctx);
-                    Mc.msg(self, tr(ctx, "A gravel tower was placed right in front of you!"), ChatFormatting.WHITE);
+                    Mc.msg(self, translate(ctx, "A gravel tower was placed right in front of you!"), ChatFormatting.WHITE);
                     Mc.playSound(self, SoundEvents.STONE_BREAK, 99f, 1.0f);
                 }).build());
 
@@ -351,7 +351,7 @@ public final class ItemRegistry {
                     Mc.setAttribute(t, Attributes.JUMP_STRENGTH, 0.0);
                     ctx.effects().apply(t, new ActiveEffect("jump_disabled", 61 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.JUMP_STRENGTH, DEF_JUMP)));
-                    Mc.title(t, " ", tr(ctx, "You can't jump: 1 minute"), ChatFormatting.WHITE, ChatFormatting.GREEN);
+                    Mc.title(t, " ", translate(ctx, "You can't jump: 1 minute"), ChatFormatting.WHITE, ChatFormatting.GREEN);
                     announce(ctx.game(), self, "Disabled the jump of", t, ChatFormatting.GREEN);
                 }).build());
 
@@ -367,7 +367,7 @@ public final class ItemRegistry {
                     Mc.fillState(lvl, o.offset(3, 1, 1), o.offset(3, 3, 2), Mc.netherPortal(Direction.Axis.Z), FillMode.ALL);
                     Mc.fill(lvl, o.offset(1, 0, 0), o.offset(2, 2, 2), Blocks.AIR, FillMode.ALL);
                     Mc.setYaw(self, -90);
-                    Mc.msg(self, tr(ctx, ">> A nether portal was placed in front of you! <<"), ChatFormatting.RED);
+                    Mc.msg(self, translate(ctx, ">> A nether portal was placed in front of you! <<"), ChatFormatting.RED);
                     Mc.playSound(self, SoundEvents.STONE_BREAK, 99f, 1.0f);
                     Mc.playSound(self, SoundEvents.BLAZE_SHOOT, 9f, 1.0f);
                 }).build());
@@ -380,7 +380,7 @@ public final class ItemRegistry {
                 "Spawn TNT on someone", "They won't expect it!")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     primeTnt(Mc.level(t), t.position(), 0, 1, 0, (byte) 85);
-                    Mc.title(t, tr(ctx, "RUN away!"), "", ChatFormatting.RED, ChatFormatting.WHITE);
+                    Mc.title(t, translate(ctx, "RUN away!"), "", ChatFormatting.RED, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Spawned ignited TNT on", t, ChatFormatting.RED);
                 }).build());
 
@@ -418,7 +418,7 @@ public final class ItemRegistry {
                             new BlockPos(o.getX() + 6, -64, o.getZ() + 2), Blocks.AIR, FillMode.ALL);
                     Mc.fill(lvl, o.offset(1, 0, 0), o.offset(5, 1, 0), Blocks.AIR, FillMode.ALL);
                     Mc.setYaw(self, -90);
-                    Mc.msg(self, tr(ctx, ">> A hole to the void summoned in front of you! <<"), ChatFormatting.WHITE);
+                    Mc.msg(self, translate(ctx, ">> A hole to the void summoned in front of you! <<"), ChatFormatting.WHITE);
                     Mc.playSound(self, SoundEvents.STONE_BREAK, 99f, 1.0f);
                 }).build());
 
@@ -428,7 +428,7 @@ public final class ItemRegistry {
                     self.setGameMode(GameType.CREATIVE);
                     ctx.effects().apply(self, new ActiveEffect("creative_mode", (int) (10.5 * 20), null,
                             p -> p.setGameMode(GameType.SURVIVAL)));
-                    Mc.msg(self, tr(ctx, ">>> You are in CREATIVE MODE for 10 seconds! <<<"), ChatFormatting.AQUA);
+                    Mc.msg(self, translate(ctx, ">>> You are in CREATIVE MODE for 10 seconds! <<<"), ChatFormatting.AQUA);
                 }).build());
 
         add(DeathSwapItem.of(19, RED, ChatFormatting.AQUA,
@@ -532,7 +532,7 @@ public final class ItemRegistry {
                             Mc.teleport(p, p.getX(), bedrockTop, p.getZ());
                         }
                     }, null));
-                    Mc.title(t, " ", tr(ctx, "Look below you!"), ChatFormatting.WHITE, ChatFormatting.WHITE);
+                    Mc.title(t, " ", translate(ctx, "Look below you!"), ChatFormatting.WHITE, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Made a bedrock trail follow", t, ChatFormatting.WHITE);
                 }).build());
 
@@ -586,7 +586,7 @@ public final class ItemRegistry {
                     Mc.fill(lvl, o.offset(2, 3, 2), o.offset(-2, 3, -2), Blocks.AIR, FillMode.ALL);
                     Mc.fill(lvl, o.offset(3, 4, 3), o.offset(-3, 8, -3), Blocks.AIR, FillMode.ALL);
                     Mc.fill(lvl, o.offset(3, 6, 3), o.offset(-3, 8, -3), Blocks.ANVIL, FillMode.ALL);
-                    Mc.title(t, tr(ctx, ">> HEADS UP!! <<"), "", ChatFormatting.RED, ChatFormatting.WHITE);
+                    Mc.title(t, translate(ctx, ">> HEADS UP!! <<"), "", ChatFormatting.RED, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Spawned falling anvils above", t, ChatFormatting.WHITE);
                 }).build());
 
@@ -596,7 +596,7 @@ public final class ItemRegistry {
                     Mc.setAttribute(t, Attributes.BLOCK_INTERACTION_RANGE, 0.0);
                     ctx.effects().apply(t, new ActiveEffect("no_interaction", 40 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.BLOCK_INTERACTION_RANGE, DEF_INTERACT)));
-                    Mc.title(t, " ", tr(ctx, ">> You're in adventure mode for 40 secs! <<"), ChatFormatting.WHITE, ChatFormatting.AQUA);
+                    Mc.title(t, " ", translate(ctx, ">> You're in adventure mode for 40 secs! <<"), ChatFormatting.WHITE, ChatFormatting.AQUA);
                     announce(ctx.game(), self, "Put into adventure mode for 40 seconds:", t, ChatFormatting.AQUA);
                 }).build());
 
@@ -684,7 +684,7 @@ public final class ItemRegistry {
                     Mc.setAttribute(t, Attributes.SCALE, 0.0625);
                     ctx.effects().apply(t, new ActiveEffect("tiny_scale", 80 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.SCALE, DEF_SCALE)));
-                    Mc.title(t, " ", tr(ctx, ">> You are very smol! <<"), ChatFormatting.WHITE, ChatFormatting.RED);
+                    Mc.title(t, " ", translate(ctx, ">> You are very smol! <<"), ChatFormatting.WHITE, ChatFormatting.RED);
                     announce(ctx.game(), self, "Made extremely tiny:", t, ChatFormatting.RED);
                 }).build());
 
@@ -702,7 +702,7 @@ public final class ItemRegistry {
                                 Mc.resetAttribute(p, Attributes.SCALE, DEF_SCALE);
                                 p.fallDistance = 0.0f;
                             }));
-                    Mc.title(t, " ", tr(ctx, ">> You are very beeg! <<"), ChatFormatting.WHITE, ChatFormatting.GREEN);
+                    Mc.title(t, " ", translate(ctx, ">> You are very beeg! <<"), ChatFormatting.WHITE, ChatFormatting.GREEN);
                     announce(ctx.game(), self, "Made extremely huge:", t, ChatFormatting.GREEN);
                 }).build());
 
@@ -784,7 +784,7 @@ public final class ItemRegistry {
                 "Spawn a village right where you are", "Villages are overpowered anyway")
                 .effect((ctx, self, t) -> {
                     Mc.placeStructure(Mc.level(self), at(self), "village_plains");
-                    Mc.msg(self, tr(ctx, "You now have access to a village! (IMPORTANT: If you are underground, "
+                    Mc.msg(self, translate(ctx, "You now have access to a village! (IMPORTANT: If you are underground, "
                             + "it spawned up on the surface!)"), ChatFormatting.YELLOW);
                     Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
                 }).build());
@@ -794,7 +794,7 @@ public final class ItemRegistry {
                 .effect((ctx, self, t) -> {
                     // Place one block offset so that it doesn't clip into the player
                     Mc.placeDesertTemple(Mc.level(self), at(self).north(-1).west(-1));
-                    Mc.msg(self, tr(ctx, "You now have access to a desert temple/pyramid! Good job!"), ChatFormatting.YELLOW);
+                    Mc.msg(self, translate(ctx, "You now have access to a desert temple/pyramid! Good job!"), ChatFormatting.YELLOW);
                     Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
                 }).build());
 
@@ -812,9 +812,9 @@ public final class ItemRegistry {
                 "Block someone from using any items: 3 mins", "The whole gimmick of this map, the items, they can't even use")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("blockedItems", 155 * 20, null,
-                            p -> Mc.msg(p, tr(ctx, ">> You can use items again!!! <<"), ChatFormatting.GREEN)));
+                            p -> Mc.msg(p, translate(ctx, ">> You can use items again!!! <<"), ChatFormatting.GREEN)));
                     ctx.game().data(t).clearOffer();
-                    Mc.title(t, " ", tr(ctx, ">> You can't use items for 3 minutes! <<"), ChatFormatting.WHITE, ChatFormatting.RED);
+                    Mc.title(t, " ", translate(ctx, ">> You can't use items for 3 minutes! <<"), ChatFormatting.WHITE, ChatFormatting.RED);
                     // Datapack 56b warns the target immediately (the round-robin "** Items
                     // blocked!" only fires on their item turn, which felt like nothing
                     // happened), so confirm the block right away.
@@ -924,7 +924,7 @@ public final class ItemRegistry {
                 "Give yourself 4 extra hearts for health", "More harts!")
                 .effect((ctx, self, t) -> {
                     Mc.addMaxHealth(self, 8.0);
-                    Mc.msg(self, tr(ctx, "+4 Hearts!"), ChatFormatting.RED);
+                    Mc.msg(self, translate(ctx, "+4 Hearts!"), ChatFormatting.RED);
                 }).build());
 
         add(DeathSwapItem.of(69, RED, ChatFormatting.RED,
@@ -979,7 +979,7 @@ public final class ItemRegistry {
                         // Find a vertical gap so the parched don't suffocate in walls/hills.
                         Entity z = Mc.summonRelSafe(t, EntityTypes.PARCHED, d[0], d[1]);
                         if (z instanceof Monster m) {
-                            m.setCustomName(Component.literal(tr(ctx, "The Việt Cộng")));
+                            m.setCustomName(Component.literal(translate(ctx, "The Việt Cộng")));
                             m.setPersistenceRequired();
                             m.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, vietHead.copy());
                             var atk = m.getAttribute(Attributes.ATTACK_DAMAGE);
@@ -1035,7 +1035,7 @@ public final class ItemRegistry {
                     Mc.enchant(self, sword, Enchantments.KNOCKBACK, 2);
                     Mc.enchant(self, sword, Enchantments.LOOTING, 3);
                     sword.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
-                            Component.literal(tr(ctx, "One-hit-kill -- ONE USE!")).withStyle(ChatFormatting.AQUA));
+                            Component.literal(translate(ctx, "One-hit-kill -- ONE USE!")).withStyle(ChatFormatting.AQUA));
                     ItemAttributeModifiers mods = ItemAttributeModifiers.builder()
                             .add(Attributes.ATTACK_DAMAGE, new AttributeModifier(
                                     Identifier.fromNamespaceAndPath("deathswap", "one_hit"),
@@ -1117,7 +1117,7 @@ public final class ItemRegistry {
                 "Crash somebody's Minecraft game", "Breaking the fourth.. er, actually all the walls")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     // We do NOT actually crash a client; reproduce the in-game warning + heavy disorientation.
-                    Mc.title(t, tr(ctx, ">>> WARNING!! <<<"), tr(ctx, "Your game will lag heavily!"), ChatFormatting.RED, ChatFormatting.RED);
+                    Mc.title(t, translate(ctx, ">>> WARNING!! <<<"), translate(ctx, "Your game will lag heavily!"), ChatFormatting.RED, ChatFormatting.RED);
                     Mc.effect(t, MobEffects.NAUSEA, 12, 0);
                     Mc.effect(t, MobEffects.BLINDNESS, 6, 0);
                     announce(ctx.game(), self, "Crashed the Minecraft game of", t, ChatFormatting.YELLOW);
@@ -1157,7 +1157,7 @@ public final class ItemRegistry {
                     // Loads the bundled saved structure (data/minecraft/structure/amethyst_geode.nbt),
                     // exactly like the datapack's structure_block[mode=load] at ~ ~ ~1.
                     Mc.placeTemplate(Mc.level(self), at(self).offset(0, 0, 1), "amethyst_geode");
-                    Mc.msg(self, tr(ctx, "You placed an Amethyst Geode"), ChatFormatting.LIGHT_PURPLE);
+                    Mc.msg(self, translate(ctx, "You placed an Amethyst Geode"), ChatFormatting.LIGHT_PURPLE);
                     Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
                 }).build());
 
@@ -1220,7 +1220,7 @@ public final class ItemRegistry {
                     Mc.fill(lvl, o.offset(0, 13, 2), o.offset(0, 14, 4), Blocks.AIR, FillMode.ALL);
                     Mc.setYaw(self, 0);
                     clearNightVisionAll(ctx);
-                    Mc.msg(self, tr(ctx, "You built a Stalagmite trap in front of you!"), ChatFormatting.GOLD);
+                    Mc.msg(self, translate(ctx, "You built a Stalagmite trap in front of you!"), ChatFormatting.GOLD);
                 }).build());
 
         add(DeathSwapItem.of(87, RED, ChatFormatting.LIGHT_PURPLE,
@@ -1252,7 +1252,7 @@ public final class ItemRegistry {
                     Mc.setAttribute(self, Attributes.BLOCK_BREAK_SPEED, 4.0);
                     ctx.effects().apply(self, new ActiveEffect("mine_faster", 121 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.BLOCK_BREAK_SPEED, DEF_BREAK)));
-                    Mc.title(self, " ", tr(ctx, "3x Faster mining: 120 seconds"), ChatFormatting.WHITE, ChatFormatting.AQUA);
+                    Mc.title(self, " ", translate(ctx, "3x Faster mining: 120 seconds"), ChatFormatting.WHITE, ChatFormatting.AQUA);
                 }).build());
 
         add(DeathSwapItem.of(90, PURPLE, ChatFormatting.LIGHT_PURPLE,
@@ -1291,7 +1291,7 @@ public final class ItemRegistry {
                     ctx.effects().apply(self, new ActiveEffect("no_fall_dam", 301 * 20,
                             p -> p.fallDistance = 0.0f,
                             p -> Mc.resetAttribute(p, Attributes.FALL_DAMAGE_MULTIPLIER, DEF_FALL)));
-                    Mc.title(self, " ", tr(ctx, ">> NO FALL DAMAGE! 5 Mins <<"), ChatFormatting.WHITE, ChatFormatting.YELLOW);
+                    Mc.title(self, " ", translate(ctx, ">> NO FALL DAMAGE! 5 Mins <<"), ChatFormatting.WHITE, ChatFormatting.YELLOW);
                 }).build());
 
         add(DeathSwapItem.of(93, MAGENTA, ChatFormatting.GREEN,
@@ -1314,7 +1314,7 @@ public final class ItemRegistry {
                     Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
                     Mc.setYaw(self, 90);
                     clearNightVisionAll(ctx);
-                    Mc.msg(self, Component.literal(tr(ctx, "> Go down the ladder to reach the stronghold! (It's around y = at 30)"))
+                    Mc.msg(self, Component.literal(translate(ctx, "> Go down the ladder to reach the stronghold! (It's around y = at 30)"))
                             .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
                     Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
                 }).build());
@@ -1378,7 +1378,7 @@ public final class ItemRegistry {
                             }
                         }
                     }, null));
-                    Mc.title(t, " ", tr(ctx, "You can't use crafting tables & furnaces: 90 secs!"), ChatFormatting.WHITE, ChatFormatting.YELLOW);
+                    Mc.title(t, " ", translate(ctx, "You can't use crafting tables & furnaces: 90 secs!"), ChatFormatting.WHITE, ChatFormatting.YELLOW);
                     announce(ctx.game(), self, "Blocked crafting tables & furnaces for", t, ChatFormatting.YELLOW);
                 }).build());
 
@@ -1410,7 +1410,7 @@ public final class ItemRegistry {
                         Mc.dust(lvl, c.x, c.y + 1, c.z + 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
                         Mc.dust(lvl, c.x, c.y + 1, c.z - 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
                     }, null));
-                    Mc.title(self, " ", tr(ctx, ">> Forcefield: 3 minutes! <<"), ChatFormatting.WHITE, ChatFormatting.LIGHT_PURPLE);
+                    Mc.title(self, " ", translate(ctx, ">> Forcefield: 3 minutes! <<"), ChatFormatting.WHITE, ChatFormatting.LIGHT_PURPLE);
                 }).build());
 
         add(DeathSwapItem.of(100, GREEN, ChatFormatting.GREEN,
@@ -1445,7 +1445,7 @@ public final class ItemRegistry {
                     Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
                     Mc.setYaw(self, 90);
                     clearNightVisionAll(ctx);
-                    Mc.msg(self, Component.literal(tr(ctx, "> Go down the ladder and you'll find the Trial Chamber! (It's around y = at 30)"))
+                    Mc.msg(self, Component.literal(translate(ctx, "> Go down the ladder and you'll find the Trial Chamber! (It's around y = at 30)"))
                             .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
                     Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
                 }).build());
@@ -1456,7 +1456,7 @@ public final class ItemRegistry {
                     Mc.placeStructure(Mc.level(self), at(self), "mansion");
                     Mc.setYaw(self, 90);
                     clearNightVisionAll(ctx);
-                    Mc.msg(self, tr(ctx, ">> A Woodland Mansion was built near you!"), ChatFormatting.YELLOW);
+                    Mc.msg(self, translate(ctx, ">> A Woodland Mansion was built near you!"), ChatFormatting.YELLOW);
                     Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
                 }).build());
 
@@ -1474,7 +1474,7 @@ public final class ItemRegistry {
                             Mc.setState(Mc.level(p), p.blockPosition(), Mc.flowingWater(2));
                         }
                     }, null));
-                    Mc.title(t, " ", tr(ctx, "You are peeing..."), ChatFormatting.WHITE, ChatFormatting.YELLOW);
+                    Mc.title(t, " ", translate(ctx, "You are peeing..."), ChatFormatting.WHITE, ChatFormatting.YELLOW);
                     Mc.playSound(t, SoundEvents.PLAYER_SPLASH, 99f, 1.6f);
                     announce(ctx.game(), self, "Made continuously pee for 1 minute:", t, ChatFormatting.YELLOW);
                 }).build());
@@ -1492,7 +1492,7 @@ public final class ItemRegistry {
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     Entity w = Mc.summonRel(t, EntityTypes.WARDEN, 0, 0, 0);
                     if (w instanceof net.minecraft.world.entity.Mob m) m.setPersistenceRequired();
-                    Mc.title(t, " ", tr(ctx, ">> warden.. <<"), ChatFormatting.WHITE, ChatFormatting.DARK_AQUA);
+                    Mc.title(t, " ", translate(ctx, ">> warden.. <<"), ChatFormatting.WHITE, ChatFormatting.DARK_AQUA);
                     announce(ctx.game(), self, "Summoned the Warden on", t, ChatFormatting.LIGHT_PURPLE);
                 }).build());
 
@@ -1525,7 +1525,7 @@ public final class ItemRegistry {
                     for (String pos : new String[]{"~ ~1 ~", "~2 ~1 ~", "~-2 ~1 ~", "~ ~1 ~2", "~ ~1 ~-2"}) {
                         Mc.runAt(t, "summon tnt " + pos + " " + nbt);
                     }
-                    Mc.title(t, tr(ctx, ">> NUKE!!! <<"), tr(ctx, "Explodes in 12 secs -- RUN!!"), ChatFormatting.GOLD, ChatFormatting.RED);
+                    Mc.title(t, translate(ctx, ">> NUKE!!! <<"), translate(ctx, "Explodes in 12 secs -- RUN!!"), ChatFormatting.GOLD, ChatFormatting.RED);
                     announce(ctx.game(), self, "Summoned the Oppenheimer nuclear bomb on", t, ChatFormatting.RED);
                 }).build());
 
@@ -1550,7 +1550,7 @@ public final class ItemRegistry {
                     Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
                     Mc.setYaw(self, 90);
                     clearNightVisionAll(ctx);
-                    Mc.msg(self, Component.literal(tr(ctx, "> Go down the ladder and you'll find the Ancient City! (May not have spawned if in the Nether or the End!)"))
+                    Mc.msg(self, Component.literal(translate(ctx, "> Go down the ladder and you'll find the Ancient City! (May not have spawned if in the Nether or the End!)"))
                             .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true)));
                     Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
                 }).build());
@@ -1593,9 +1593,9 @@ public final class ItemRegistry {
 
     private static void shield(ItemContext ctx, ServerPlayer self, int seconds) {
         ctx.effects().apply(self, new ActiveEffect("shield", seconds * 20, null,
-                p -> Mc.msg(p, tr(ctx, "Your shield wore off. Others can target you again."), ChatFormatting.GRAY)));
+                p -> Mc.msg(p, translate(ctx, "Your shield wore off. Others can target you again."), ChatFormatting.GRAY)));
         ctx.game().broadcast(">> " + self.getName().getString()
-                + tr(ctx, " shielded themself from negative items! <<"), ChatFormatting.GOLD);
+                + translate(ctx, " shielded themself from negative items! <<"), ChatFormatting.GOLD);
     }
 
     /** Spawn a primed TNT at default explosion power (4); higher-power nukes are summoned via command. */
@@ -1657,7 +1657,7 @@ public final class ItemRegistry {
             p.setGameMode(GameType.SURVIVAL);
         }));
         Mc.title(self, " ", t.getName().getString()
-                + tr(ctx, " can't see you!"),
+                + translate(ctx, " can't see you!"),
                 ChatFormatting.WHITE, ChatFormatting.GREEN);
     }
 
@@ -1674,7 +1674,7 @@ public final class ItemRegistry {
             if (counter[0] % 10 == 0) {
                 p.addEffect(new net.minecraft.world.effect.MobEffectInstance(MobEffects.NAUSEA, 30, 0, false, false));
             }
-        }, p -> Mc.msg(p, tr(ctx, ">> The earthquake has concluded! You are safe now! <<"), ChatFormatting.YELLOW)));
+        }, p -> Mc.msg(p, translate(ctx, ">> The earthquake has concluded! You are safe now! <<"), ChatFormatting.YELLOW)));
     }
 
     /** Blocks the datapack's {@code #minecraft:pillars_blocks} tag covers. */
