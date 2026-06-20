@@ -4,7 +4,8 @@
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
 		"LevelSetBlockMixin",
-		"PlayerDropMixin"
+		"PlayerDropMixin",
+		"ScatteredFeaturePieceAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

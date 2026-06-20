@@ -1,5 +1,6 @@
 package com.deathswap.util;
 
+import com.deathswap.mixin.ScatteredFeaturePieceAccessor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -48,9 +49,12 @@ import net.minecraft.tags.BiomeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.block.entity.BlockEntityTypes;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.structures.DesertPyramidPiece;
+import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
@@ -429,6 +433,74 @@ public final class Mc {
                 new BoundingBox(cp.getMinBlockX(), level.getMinY(), cp.getMinBlockZ(),
                         cp.getMaxBlockX(), level.getMaxY(), cp.getMaxBlockZ()), cp));
         return true;
+    }
+
+    /**
+     * Builds a desert pyramid with its floor at {@code pos}, reliably and right where
+     * the player is.
+     *
+     * <p>The worldgen {@code desert_pyramid} structure (via {@link #placeStructure}) is
+     * unreliable: its piece snaps its Y to the <em>lowest</em> ground height across the
+     * whole 21x21 footprint, so on uneven terrain it buries itself and over water it
+     * sinks. Here we drive the {@link DesertPyramidPiece} directly: position its bounding
+     * box at {@code pos}, mark the height as already resolved (via
+     * {@link ScatteredFeaturePieceAccessor}) so {@code postProcess} skips the terrain
+     * snap, then place it across a full-height region and run the structure's
+     * suspicious-sand pass ({@code DesertPyramidStructure.afterPlace}) by hand.
+     */
+    public static void placeDesertTemple(ServerLevel level, BlockPos pos) {
+        RandomSource random = level.getRandom();
+        DesertPyramidPiece piece = new DesertPyramidPiece(random, pos.getX(), pos.getZ());
+        // The constructor anchors the box at y=64; shift it so the temple floor sits at pos.
+        piece.move(0, pos.getY() - piece.getBoundingBox().minY(), 0);
+        // Any non-negative value tells postProcess the height is resolved (skip the snap);
+        // the box is already where we want it, so the exact value is irrelevant.
+        ((ScatteredFeaturePieceAccessor) (Object) piece).deathswap$setHeightPosition(Math.max(0, pos.getY()));
+
+        BoundingBox area = piece.getBoundingBox();
+        // Limit writes to the footprint but over the full column, so the base and the
+        // buried TNT/cellar (which sit below the box minimum) still place.
+        BoundingBox writable = new BoundingBox(area.minX(), level.getMinY(), area.minZ(),
+                area.maxX(), level.getMaxY(), area.maxZ());
+        piece.postProcess(level, level.structureManager(), level.getChunkSource().getGenerator(),
+                random, writable, ChunkPos.containing(pos), pos);
+
+        placeDesertTempleSand(level, piece, writable);
+    }
+
+    /**
+     * Mirrors {@code DesertPyramidStructure.afterPlace}: the piece only records where its
+     * cellar sand goes, so we lay it here — a handful of suspicious-sand archaeology
+     * spots, the rest plain sand.
+     */
+    private static void placeDesertTempleSand(ServerLevel level, DesertPyramidPiece piece, BoundingBox box) {
+        java.util.List<BlockPos> positions =
+                new java.util.ArrayList<>(new java.util.LinkedHashSet<>(piece.getPotentialSuspiciousSandWorldPositions()));
+        placeSuspiciousSand(level, box, piece.getRandomCollapsedRoofPos());
+
+        RandomSource r = RandomSource.create(level.getSeed()).forkPositional().at(piece.getBoundingBox().getCenter());
+        for (int i = positions.size() - 1; i > 0; i--) { // Fisher-Yates, matching vanilla's shuffle
+            int j = r.nextInt(i + 1);
+            java.util.Collections.swap(positions, i, j);
+        }
+
+        int suspicious = Math.min(positions.size(), r.nextInt(5, 8));
+        for (BlockPos bp : positions) {
+            if (suspicious > 0) {
+                suspicious--;
+                placeSuspiciousSand(level, box, bp);
+            } else if (box.isInside(bp)) {
+                level.setBlock(bp, Blocks.SAND.defaultBlockState(), Block.UPDATE_CLIENTS);
+            }
+        }
+    }
+
+    private static void placeSuspiciousSand(ServerLevel level, BoundingBox box, BlockPos pos) {
+        if (box.isInside(pos)) {
+            level.setBlock(pos, Blocks.SUSPICIOUS_SAND.defaultBlockState(), Block.UPDATE_CLIENTS);
+            level.getBlockEntity(pos, BlockEntityTypes.BRUSHABLE_BLOCK)
+                    .ifPresent(be -> be.setLootTable(BuiltInLootTables.DESERT_PYRAMID_ARCHAEOLOGY, pos.asLong()));
+        }
     }
 
     /**

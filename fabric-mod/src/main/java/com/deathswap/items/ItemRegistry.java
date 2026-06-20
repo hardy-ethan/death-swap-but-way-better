@@ -792,9 +792,9 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(54, ORANGE, ChatFormatting.YELLOW,
                 "Spawn a desert temple right where you are", "Yunno, for that classic TNT trap we all love...")
                 .effect((ctx, self, t) -> {
-                    Mc.placeStructure(Mc.level(self), at(self), "desert_pyramid");
-                    Mc.msg(self, tr(ctx, "You now have access to a desert temple/pyramid! Good job! (Note: If you "
-                            + "don't see it on the surface it may have spawned underground)"), ChatFormatting.YELLOW);
+                    // Place one block offset so that it doesn't clip into the player
+                    Mc.placeDesertTemple(Mc.level(self), at(self).north(-1).west(-1));
+                    Mc.msg(self, tr(ctx, "You now have access to a desert temple/pyramid! Good job!"), ChatFormatting.YELLOW);
                     Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
                 }).build());
 
