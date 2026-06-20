@@ -2,6 +2,7 @@ package com.deathswap.game;
 
 import com.deathswap.DeathSwapMod;
 import com.deathswap.config.SettingsStore;
+import com.deathswap.config.WinsStore;
 import com.deathswap.effects.EffectManager;
 import com.deathswap.items.ItemManager;
 import com.deathswap.util.Mc;
@@ -74,6 +75,8 @@ public final class GameManager {
     private final GameSettings settings = new GameSettings();
     private final EffectManager effects = new EffectManager();
     private final ScoreboardDisplay scoreboard = new ScoreboardDisplay();
+    /** Lifetime per-player win tallies, persisted across server restarts. */
+    private final WinsStore winsStore = new WinsStore();
     private final ItemManager items;
     private final Map<UUID, PlayerData> playerData = new HashMap<>();
     private final List<Scheduled> scheduled = new ArrayList<>();
@@ -134,7 +137,10 @@ public final class GameManager {
         this.server = server;
         this.phase = GamePhase.HUB;
         SettingsStore.load(settings);
+        winsStore.load();
         items.registerAll();
+        // Stand up the hub's wins HUD now; per-player rows are pushed as people join.
+        scoreboard.startHub(server, zh());
     }
 
     /** Persist the current game settings so they survive a server restart. */
@@ -163,7 +169,11 @@ public final class GameManager {
     }
 
     public PlayerData data(ServerPlayer player) {
-        return playerData.computeIfAbsent(player.getUUID(), PlayerData::new);
+        return playerData.computeIfAbsent(player.getUUID(), uuid -> {
+            PlayerData data = new PlayerData(uuid);
+            data.wins = winsStore.get(uuid); // seed lifetime wins from disk
+            return data;
+        });
     }
 
     /** True when the game language is Chinese ({@code Lang Core} 2). */
@@ -182,6 +192,7 @@ public final class GameManager {
         cancelIdleReset();
         if (phase != GamePhase.RUNNING && phase != GamePhase.ENDING) {
             sendToHub(player);
+            updateHubScoreboard(); // show their win tally on the lobby HUD
             return;
         }
         // PlayerData survives disconnects (see onPlayerLeave), so an existing entry
@@ -209,6 +220,9 @@ public final class GameManager {
         if (phase == GamePhase.RUNNING) {
             scoreboard.removePlayer(player);
             checkWinCondition();
+        } else {
+            // In the hub, drop their row from the wins HUD as they leave.
+            scoreboard.removePlayer(player);
         }
         // A player just left: start the empty-server idle clock. The timer
         // re-checks that the server is actually empty (and in the hub) before it
@@ -852,6 +866,7 @@ public final class GameManager {
             PlayerData data = data(winner);
             data.winner = true;
             data.wins++; // scoreboard players add @s Wins 1
+            winsStore.set(winner.getUUID(), data.wins); // persist across restarts
 
             // prep_winner.mcfunction: clear effects on everyone, then resistance 20 5
             // and saturation 20 5 for all; the winner gets glowing (12 1 after
@@ -886,7 +901,8 @@ public final class GameManager {
 
     private void returnEveryoneToHub() {
         phase = GamePhase.HUB;
-        scoreboard.stop();
+        // Swap the game's lives/health HUD back to the hub's wins tally.
+        scoreboard.startHub(server, zh());
         // Don't discard the cache: a destination is removed from it the moment it's
         // handed out (ChunkCache.next), so anything still queued is unused and safe
         // to carry into the next game. The hub phase tops it back up from here.
@@ -902,6 +918,9 @@ public final class GameManager {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
         }
+        // Refresh the wins tally now everyone is back in the lobby (the winner's
+        // count has gone up).
+        updateHubScoreboard();
         // Wipe everyone's advancements so nothing earned during the round carries
         // into the lobby or the next game.
         clearAllAdvancements();
@@ -931,6 +950,15 @@ public final class GameManager {
             }
         }
         scoreboard.updateLives(participants, p -> data(p).lives);
+    }
+
+    /**
+     * Refresh the hub's wins HUD (sidebar + below-name) with every online
+     * player's lifetime win count. Only meaningful while in the hub, where the
+     * wins objectives are the displayed ones.
+     */
+    private void updateHubScoreboard() {
+        scoreboard.updateWins(server.getPlayerList().getPlayers(), p -> data(p).wins);
     }
 
     /**

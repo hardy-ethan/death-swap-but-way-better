@@ -204,6 +204,7 @@ public final class Translator {
             // ---- scoreboard labels ----
             Map.entry("Lives", "生命"),
             Map.entry("Health", "生命值"),
+            Map.entry("Wins", "胜场"),
 
             // ---- item display names (datapack ch_detect_item; item LORE is NOT translated) ----
             Map.entry("Give a player speed 1 billion: 40 secs", "赋予玩家速度10亿：40秒"),

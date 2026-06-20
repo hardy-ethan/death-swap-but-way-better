@@ -25,13 +25,51 @@ final class ScoreboardDisplay {
 
     private static final String LIVES_OBJECTIVE = "ds_lives";
     private static final String HEALTH_OBJECTIVE = "ds_health";
+    private static final String WINS_OBJECTIVE = "ds_wins";
 
     private MinecraftServer server;
+
+    /**
+     * Hub HUD: show each player's lifetime win count both on the sidebar and
+     * below their name above their head. Clears the running-game objectives so
+     * only the wins tally is visible while idling in the lobby.
+     */
+    void startHub(MinecraftServer server, boolean zh) {
+        this.server = server;
+        Scoreboard board = server.getScoreboard();
+        remove(board, LIVES_OBJECTIVE);
+        remove(board, HEALTH_OBJECTIVE);
+
+        Objective wins = recreate(board, WINS_OBJECTIVE,
+                ObjectiveCriteria.DUMMY,
+                Component.literal(Translator.translate(zh, "Wins")).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+                ObjectiveCriteria.RenderType.INTEGER);
+        board.setDisplayObjective(DisplaySlot.SIDEBAR, wins);
+        board.setDisplayObjective(DisplaySlot.BELOW_NAME, wins);
+    }
+
+    /** Push current win counts for every online player onto the hub HUD. */
+    void updateWins(Collection<ServerPlayer> players, ToIntFunction<ServerPlayer> winsOf) {
+        if (server == null) {
+            return;
+        }
+        Scoreboard board = server.getScoreboard();
+        Objective wins = board.getObjective(WINS_OBJECTIVE);
+        if (wins == null) {
+            return;
+        }
+        for (ServerPlayer player : players) {
+            board.getOrCreatePlayerScore(player, wins).set(winsOf.applyAsInt(player));
+        }
+    }
 
     /** Create the objectives (fresh each game) and bind them to their display slots. */
     void start(MinecraftServer server, boolean zh) {
         this.server = server;
         Scoreboard board = server.getScoreboard();
+        // The wins tally (sidebar + below-name) belongs to the hub; clear it so the
+        // game's lives/health HUD takes over cleanly.
+        remove(board, WINS_OBJECTIVE);
 
         Objective lives = recreate(board, LIVES_OBJECTIVE,
                 ObjectiveCriteria.DUMMY,
@@ -61,26 +99,21 @@ final class ScoreboardDisplay {
         }
     }
 
-    /** Drop a player's sidebar row (e.g. on disconnect). */
+    /** Drop a player's sidebar row from whichever phase HUD is showing (e.g. on disconnect). */
     void removePlayer(ServerPlayer player) {
         if (server == null) {
             return;
         }
         Scoreboard board = server.getScoreboard();
-        Objective lives = board.getObjective(LIVES_OBJECTIVE);
-        if (lives != null) {
-            board.resetSinglePlayerScore(player, lives);
-        }
+        resetScore(board, LIVES_OBJECTIVE, player);
+        resetScore(board, WINS_OBJECTIVE, player);
     }
 
-    /** Tear the HUD down when returning to the hub. */
-    void stop() {
-        if (server == null) {
-            return;
+    private static void resetScore(Scoreboard board, String name, ServerPlayer player) {
+        Objective objective = board.getObjective(name);
+        if (objective != null) {
+            board.resetSinglePlayerScore(player, objective);
         }
-        Scoreboard board = server.getScoreboard();
-        remove(board, LIVES_OBJECTIVE);
-        remove(board, HEALTH_OBJECTIVE);
     }
 
     private static Objective recreate(Scoreboard board, String name, ObjectiveCriteria criteria,

@@ -20,7 +20,11 @@ public final class PlayerData {
     /** Lives remaining this game. 0 == eliminated. */
     public int lives;
 
-    /** Total wins across games this session (datapack {@code Wins}). */
+    /**
+     * Lifetime wins (datapack {@code Wins}), seeded from {@link com.deathswap.config.WinsStore}
+     * when this data is created and persisted there whenever it changes, so it
+     * survives server restarts.
+     */
     public int wins;
 
     /** Permanent slot (1..12) assigned at game prep; used for item targeting. */
