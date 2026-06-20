@@ -3,6 +3,7 @@ package com.deathswap;
 import com.deathswap.config.DeathSwapConfig;
 import com.deathswap.game.DeathSwapCommands;
 import com.deathswap.game.GameManager;
+import com.deathswap.game.WorldReset;
 import com.deathswap.items.ItemManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -14,6 +15,7 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,16 @@ public final class DeathSwapMod implements ModInitializer {
         DeathSwapConfig.load();
 
         ServerLifecycleEvents.SERVER_STARTED.register(GAME::onServerStarted);
+
+        // When the server shuts down for an automatic world reset (triggered after
+        // it sits empty in the hub), free the region files and change the seed now
+        // that every level is saved and closed. An external restart wrapper brings
+        // the server back up on the new seed.
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+            if (GAME.resetPending()) {
+                WorldReset.resetWorld(server.getWorldPath(LevelResource.ROOT));
+            }
+        });
 
         ServerTickEvents.END_SERVER_TICK.register(server -> GAME.tick());
 

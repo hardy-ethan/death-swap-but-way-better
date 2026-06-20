@@ -57,6 +57,19 @@ public final class GameManager {
      */
     private static final int FREEZE_TICKS = 7 * 20;
 
+    /**
+     * How long the server must sit empty (no players online) before an automatic
+     * world reset is triggered. The reset frees the region files and re-rolls the
+     * seed (see {@link WorldReset}), so the next session starts on a fresh, smaller
+     * world.
+     *
+     * <p>This is a wall-clock delay run off the game tick loop on purpose: a
+     * dedicated server stops ticking once it has been empty for
+     * {@code pause-when-empty-seconds} (default 60), so a tick-based timer would
+     * freeze and never fire. We arm a real-time scheduler on disconnect instead.
+     */
+    private static final long IDLE_RESET_SECONDS = 30;
+
     private final GameSettings settings = new GameSettings();
     private final EffectManager effects = new EffectManager();
     private final ScoreboardDisplay scoreboard = new ScoreboardDisplay();
@@ -87,6 +100,26 @@ public final class GameManager {
     private int lastWarnSecondAnnounced = -1;
     /** Whether the world was last set to night by item 66. */
     private boolean isNight = false;
+    /**
+     * Real-time scheduler for the empty-server idle reset, run off the game tick
+     * loop so it still fires after the server pauses ticking when empty. A single
+     * daemon thread; the armed task is held in {@link #pendingReset}.
+     */
+    private final java.util.concurrent.ScheduledExecutorService idleResetScheduler =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "DeathSwap-idle-reset");
+                t.setDaemon(true);
+                return t;
+            });
+    /** The armed idle-reset task, or null when none is pending. Guarded by {@code this}. */
+    private java.util.concurrent.ScheduledFuture<?> pendingReset;
+    /**
+     * Set once the idle timer commits to a reset: the server has been told to shut
+     * down, and the {@code SERVER_STOPPED} hook should free the region files and
+     * change the seed once the world is closed. Volatile because it's written from
+     * the server thread and read by the shutdown hook.
+     */
+    private volatile boolean resetPending;
     /** Cached dry lobby column near the origin, resolved on first use. */
     private net.minecraft.core.BlockPos hubSpawn;
 
@@ -138,6 +171,8 @@ public final class GameManager {
     // ---- player connection ----
 
     public void onPlayerJoin(ServerPlayer player) {
+        // Someone is online again — call off any pending empty-server reset.
+        cancelIdleReset();
         if (phase != GamePhase.RUNNING && phase != GamePhase.ENDING) {
             sendToHub(player);
             return;
@@ -168,6 +203,10 @@ public final class GameManager {
             scoreboard.removePlayer(player);
             checkWinCondition();
         }
+        // A player just left: start the empty-server idle clock. The timer
+        // re-checks that the server is actually empty (and in the hub) before it
+        // commits, so arming it while others are still online is harmless.
+        armIdleReset();
     }
 
     private void sendToHub(ServerPlayer player) {
@@ -243,6 +282,99 @@ public final class GameManager {
         // is online to receive the chat broadcast.
         DeathSwapMod.LOGGER.info(status);
         Mc.broadcast(server, "[DeathSwap] " + status, ChatFormatting.DARK_GRAY);
+    }
+
+    /**
+     * Arm the idle-reset timer: after {@link #IDLE_RESET_SECONDS} of real time the
+     * server is checked and, if still empty and idling in the hub, shut down for a
+     * world reset. Called whenever a player disconnects; the timer only ever runs
+     * after someone has been online, so a server nobody joins never resets.
+     *
+     * <p>Cancels any previously-armed timer first, so the delay always counts from
+     * the most recent disconnect, and is a no-op once a reset is already committed.
+     */
+    private synchronized void armIdleReset() {
+        if (resetPending || server == null) {
+            return;
+        }
+        cancelIdleReset();
+        pendingReset = idleResetScheduler.schedule(this::onIdleResetTimeout,
+                IDLE_RESET_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    /** Cancel any armed idle-reset timer (e.g. a player reconnected). */
+    private synchronized void cancelIdleReset() {
+        if (pendingReset != null) {
+            pendingReset.cancel(false);
+            pendingReset = null;
+        }
+    }
+
+    /**
+     * Idle timer elapsed (on the scheduler thread). Hop onto the server thread to
+     * re-check state with correct visibility — and because that task queue is still
+     * drained every tick even while the server is paused empty — then, if the
+     * server really is still empty and in the hub, begin a clean shutdown for the
+     * reset. The region-file deletion and seed change happen once the world is
+     * saved and closed, in the {@code SERVER_STOPPED} hook (see {@link #resetPending()}
+     * / {@link WorldReset}); an external restart wrapper then brings the server back
+     * up on the new seed.
+     */
+    private void onIdleResetTimeout() {
+        MinecraftServer s = server;
+        if (s == null) {
+            return;
+        }
+        s.execute(() -> {
+            if (resetPending || !s.getPlayerList().getPlayers().isEmpty() || phase != GamePhase.HUB) {
+                return;
+            }
+            resetPending = true;
+            DeathSwapMod.LOGGER.info(
+                    "Server empty for {}s — shutting down to free region files and change the seed.",
+                    IDLE_RESET_SECONDS);
+            s.halt(false);
+        });
+    }
+
+    /**
+     * Whether shutdown was initiated for an automatic world reset, meaning the
+     * {@code SERVER_STOPPED} hook should run {@link WorldReset} once the world is
+     * closed.
+     */
+    public boolean resetPending() {
+        return resetPending;
+    }
+
+    /**
+     * Trigger the world reset on demand (the {@code /deathswap resetworld} command),
+     * shutting down now instead of waiting for the empty-server idle timer. Takes
+     * the same path as {@link #onIdleResetTimeout()}: flag the reset and halt, so the
+     * {@code SERVER_STOPPED} hook frees the region files and re-rolls the seed once
+     * the world is closed, and the restart wrapper boots back up on the new seed.
+     *
+     * <p>Refused while a game is running (so an operator can't wipe the world out
+     * from under an active round) and when a reset is already pending. Returns true
+     * if the shutdown was initiated. Must be called on the server thread.
+     *
+     * @param reason the disconnect message shown to players as they're kicked
+     */
+    public boolean triggerWorldReset(Component reason) {
+        if (server == null || resetPending || phase != GamePhase.HUB) {
+            return false;
+        }
+        // Call off any armed idle timer; we're shutting down right now.
+        cancelIdleReset();
+        resetPending = true;
+        DeathSwapMod.LOGGER.info(
+                "World reset requested — shutting down to free region files and change the seed.");
+        // Kick everyone with our own reason first; otherwise the halt below
+        // disconnects them with the generic "Server closed" message.
+        for (ServerPlayer player : new ArrayList<>(server.getPlayerList().getPlayers())) {
+            player.connection.disconnect(reason);
+        }
+        server.halt(false);
+        return true;
     }
 
     private void tickRunning() {

@@ -46,6 +46,22 @@ public final class DeathSwapCommands {
                             game.forceReturnToHub();
                             return 1;
                         }))
+                // ---- admin: free region files + re-roll the seed (shuts the server
+                //      down; an external restart wrapper brings it back on the new seed) ----
+                .then(Commands.literal("resetworld")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .executes(ctx -> {
+                            Component reason = Component.literal(
+                                    "Resetting the world (new seed). The server is restarting. Please "
+                                            + "reconnect in ~50 seconds.");
+                            if (!game.triggerWorldReset(reason)) {
+                                ctx.getSource().sendFailure(Component.literal(
+                                        "Can't reset now, only from the hub with no game running "
+                                                + "(or a reset is already underway)."));
+                                return 0;
+                            }
+                            return 1;
+                        }))
                 // ---- admin: give an item by id ----
                 .then(Commands.literal("give")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
