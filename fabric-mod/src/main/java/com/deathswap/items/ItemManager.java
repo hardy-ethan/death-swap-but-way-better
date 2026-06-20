@@ -31,12 +31,15 @@ public final class ItemManager {
 
     private static final String NBT_ITEM_ID = "ds_item_id";
     private static final String NBT_LOCKED = "ds_locked";
-    private static final int[] HOTBAR_SLOTS = {6, 7, 8};
+    private static final int[] HOTBAR_SLOTS = { 6, 7, 8 };
 
     private final GameManager game;
     private final ItemRegistry registry = new ItemRegistry();
 
-    /** Round-robin pointer over alive players for the "one offer per interval" clock. */
+    /**
+     * Round-robin pointer over alive players for the "one offer per interval"
+     * clock.
+     */
     private int rotation = 0;
 
     public ItemManager(GameManager game) {
@@ -160,7 +163,7 @@ public final class ItemManager {
             return false;
         }
         PlayerData data = game.data(player);
-        data.offeredItems = new DeathSwapItem[]{item};
+        data.offeredItems = new DeathSwapItem[] { item };
         data.choosingItem = true;
         data.pendingTargetItem = null;
         player.getInventory().setItem(HOTBAR_SLOTS[0], buildDye(item));
@@ -199,7 +202,8 @@ public final class ItemManager {
         if (data == null) {
             return -1;
         }
-        // 26.2 uses the Optional-based NBT API; getIntOr returns a primitive with a default.
+        // 26.2 uses the Optional-based NBT API; getIntOr returns a primitive with a
+        // default.
         return data.copyTag().getIntOr(NBT_ITEM_ID, -1);
     }
 
@@ -295,7 +299,8 @@ public final class ItemManager {
         Mc.msg(player, Component.literal(Translator.translate(game.settings().isChinese(),
                 "\n>> Click on which player you want to use this item on: "))
                 .withStyle(ChatFormatting.YELLOW)
-                .append(Component.literal(item.name).withStyle(ChatFormatting.AQUA)));
+                .append(Component.literal(Translator.translate(game.settings().isChinese(), item.name))
+                        .withStyle(ChatFormatting.AQUA)));
 
         // Every alive player is listed by their permanent number (yourself
         // included, as in the datapack's select_template). Shielded players are
