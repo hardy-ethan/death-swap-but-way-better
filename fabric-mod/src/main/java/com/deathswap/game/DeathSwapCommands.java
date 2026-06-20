@@ -89,6 +89,7 @@ public final class DeathSwapCommands {
                                 .then(Commands.argument("n", IntegerArgumentType.integer(1, 6))
                                         .executes(ctx -> {
                                             game.settings().maxLives = IntegerArgumentType.getInteger(ctx, "n");
+                                            game.persistSettings();
                                             return ack(ctx, "Lives = " + game.settings().maxLives);
                                         })))
                         .then(Commands.literal("interval")
@@ -96,6 +97,7 @@ public final class DeathSwapCommands {
                                         .executes(ctx -> {
                                             game.settings().swapIntervalSeconds =
                                                     IntegerArgumentType.getInteger(ctx, "seconds");
+                                            game.persistSettings();
                                             return ack(ctx, "Swap interval = "
                                                     + game.settings().swapIntervalSeconds + "s");
                                         })))
@@ -103,18 +105,21 @@ public final class DeathSwapCommands {
                                 .then(Commands.argument("on", BoolArgumentType.bool())
                                         .executes(ctx -> {
                                             game.settings().randomCycle = BoolArgumentType.getBool(ctx, "on");
+                                            game.persistSettings();
                                             return ack(ctx, "Random cycle = " + game.settings().randomCycle);
                                         })))
                         .then(Commands.literal("pvp")
                                 .then(Commands.argument("on", BoolArgumentType.bool())
                                         .executes(ctx -> {
                                             game.settings().pvp = BoolArgumentType.getBool(ctx, "on");
+                                            game.persistSettings();
                                             return ack(ctx, "PvP = " + game.settings().pvp);
                                         })))
                         .then(Commands.literal("hunger")
                                 .then(Commands.argument("on", BoolArgumentType.bool())
                                         .executes(ctx -> {
                                             game.settings().hunger = BoolArgumentType.getBool(ctx, "on");
+                                            game.persistSettings();
                                             return ack(ctx, "Hunger = " + game.settings().hunger);
                                         })))
                         .then(Commands.literal("warning")
@@ -122,6 +127,7 @@ public final class DeathSwapCommands {
                                         .executes(ctx -> {
                                             int s = IntegerArgumentType.getInteger(ctx, "seconds");
                                             game.settings().swapWarning = nearestWarning(s);
+                                            game.persistSettings();
                                             return ack(ctx, "Swap warning = "
                                                     + game.settings().swapWarning.seconds + "s");
                                         }))))

@@ -1,6 +1,7 @@
 package com.deathswap.game;
 
 import com.deathswap.DeathSwapMod;
+import com.deathswap.config.SettingsStore;
 import com.deathswap.effects.EffectManager;
 import com.deathswap.items.ItemManager;
 import com.deathswap.util.Mc;
@@ -132,7 +133,13 @@ public final class GameManager {
     public void onServerStarted(MinecraftServer server) {
         this.server = server;
         this.phase = GamePhase.HUB;
+        SettingsStore.load(settings);
         items.registerAll();
+    }
+
+    /** Persist the current game settings so they survive a server restart. */
+    public void persistSettings() {
+        SettingsStore.save(settings);
     }
 
     public MinecraftServer server() {
