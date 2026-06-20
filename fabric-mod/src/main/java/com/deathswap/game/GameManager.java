@@ -479,7 +479,9 @@ public final class GameManager {
                 ? String.format("%d:%02d", mins, secs)
                 : secs + "s";
         ChatFormatting color = secondsLeft <= 5 ? ChatFormatting.RED : ChatFormatting.YELLOW;
-        for (ServerPlayer player : alivePlayers()) {
+        // Show to everyone online (players and spectators alike); this only runs
+        // during the RUNNING phase, so there are no lobby players to confuse.
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             Mc.actionBar(player, "Swap in " + time, color);
         }
     }
