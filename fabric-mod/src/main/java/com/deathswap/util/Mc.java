@@ -156,6 +156,11 @@ public final class Mc {
         player.addEffect(new MobEffectInstance(effect, seconds * 20, amplifier, false, true, true));
     }
 
+    /** Apply an effect that never expires (until cleared), e.g. for the hub. */
+    public static void infiniteEffect(ServerPlayer player, Holder<MobEffect> effect, int amplifier) {
+        player.addEffect(new MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION, amplifier, false, true, true));
+    }
+
     public static void clearEffect(ServerPlayer player, Holder<MobEffect> effect) {
         player.removeEffect(effect);
     }

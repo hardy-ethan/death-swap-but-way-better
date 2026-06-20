@@ -249,6 +249,7 @@ public final class GameManager {
         player.setGameMode(GameType.ADVENTURE);
         effects.clearAll(player);
         resetPlayerStats(player);
+        Mc.infiniteEffect(player, MobEffects.REGENERATION, 254);
         teleportToWorldSpawn(player);
     }
 
@@ -578,9 +579,12 @@ public final class GameManager {
             data.resetForNewGame(settings.maxLives);
             player.setGameMode(GameType.SURVIVAL);
             // Full reset so nothing leaks in from a previous game: clear any running
-            // effects, then reset max health/health/food/saturation and wipe the
-            // inventory + ender chest before the starter kit and spread.
+            // effects (the mod's custom ones plus vanilla mob effects, including the
+            // hub's infinite Regeneration), then reset max health/health/food/
+            // saturation and wipe the inventory + ender chest before the starter kit
+            // and spread.
             effects.clearAll(player);
+            player.removeAllEffects();
             resetPlayerStats(player);
             if (settings.startWithBasicTools) {
                 giveStarterKit(player);
