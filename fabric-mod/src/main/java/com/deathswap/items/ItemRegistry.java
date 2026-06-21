@@ -1062,6 +1062,7 @@ public final class ItemRegistry {
                             m.setCustomName(Component.literal(translate(ctx, "The Việt Cộng")));
                             m.setPersistenceRequired();
                             m.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, vietHead.copy());
+                            m.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack.EMPTY);
                             var atk = m.getAttribute(Attributes.ATTACK_DAMAGE);
                             if (atk != null) atk.setBaseValue(2.0);
                         }
