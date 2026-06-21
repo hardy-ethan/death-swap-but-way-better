@@ -6,6 +6,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.minecraft.commands.arguments.EntityArgument;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -68,6 +69,11 @@ public final class DeathSwapCommands {
                             }
                             return 1;
                         }))
+                // ---- admin: grant life (and resurrect / rollback if needed) ----
+                .then(Commands.literal("grantlife")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> grantLife(ctx, game))))
                 // ---- admin: give an item by id ----
                 .then(Commands.literal("give")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -203,6 +209,23 @@ public final class DeathSwapCommands {
                         .then(Commands.argument("message", StringArgumentType.greedyString())
                                 .executes(ctx -> report(ctx,
                                         StringArgumentType.getString(ctx, "message")))));
+    }
+
+    private static int grantLife(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+                                  GameManager game) {
+        ServerPlayer target;
+        try {
+            target = EntityArgument.getPlayer(ctx, "player");
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            ctx.getSource().sendFailure(Component.literal("Player not found."));
+            return 0;
+        }
+        if (!game.addLife(target)) {
+            ctx.getSource().sendFailure(Component.literal(
+                    "No game is in progress (or the game has already ended and returned to the hub)."));
+            return 0;
+        }
+        return 1;
     }
 
     private static int report(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,

@@ -914,6 +914,71 @@ public final class GameManager {
         returnEveryoneToHub();
     }
 
+    /**
+     * Admin command: give one life to {@code target}, resurrecting
+     * them if they were eliminated and rolling the game back from the ENDING phase
+     * if their death was what triggered it. Returns false if there is no game to
+     * act on (hub / already done).
+     */
+    public boolean addLife(ServerPlayer target) {
+        if (phase != GamePhase.RUNNING && phase != GamePhase.ENDING) {
+            return false;
+        }
+        PlayerData data = data(target);
+
+        // If the game is in the ENDING phase, undo the winner declaration first so
+        // the round can continue. This covers the case where this player's death (or
+        // elimination) caused the win condition to fire.
+        if (phase == GamePhase.ENDING) {
+            undoWinnerDeclaration();
+            phase = GamePhase.RUNNING;
+            broadcast(">> Game rolled back — a life was granted. <<", ChatFormatting.YELLOW);
+        }
+
+        // Resurrect an eliminated player.
+        if (data.eliminated) {
+            data.eliminated = false;
+            data.playing = true;
+            data.deathImmunityTicks = 160;
+            effects.clearAll(target);
+            target.setGameMode(GameType.SURVIVAL);
+            target.setHealth(target.getMaxHealth());
+            target.getFoodData().setFoodLevel(20);
+            target.getFoodData().setSaturation(5.0f);
+            // Return them to their initial spread spawn, same as a normal death.
+            if (data.spawnPos != null) {
+                Mc.teleportTo(target, server.overworld(),
+                        data.spawnPos.getX() + 0.5, data.spawnPos.getY(), data.spawnPos.getZ() + 0.5,
+                        data.spawnYaw, target.getXRot());
+            }
+        }
+
+        data.lives = Math.max(data.lives, 0) + 1;
+        updateSidebar();
+
+        broadcast(target.getDisplayName().getString() + " was granted a life by an admin.", ChatFormatting.AQUA);
+        return true;
+    }
+
+    /**
+     * Undo a winner declaration: strip the win credit, remove the winner's special
+     * effects (glowing, totem, resistance/saturation), and restore the game-time
+     * effects clock so play can resume.
+     */
+    private void undoWinnerDeclaration() {
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            PlayerData d = data(p);
+            if (d.winner) {
+                d.winner = false;
+                d.wins = Math.max(0, d.wins - 1);
+                winsStore.set(p.getUUID(), d.wins);
+                p.removeEffect(MobEffects.GLOWING);
+            }
+            p.removeEffect(MobEffects.RESISTANCE);
+            p.removeEffect(MobEffects.SATURATION);
+        }
+    }
+
     private void returnEveryoneToHub() {
         phase = GamePhase.HUB;
         applyGameRules();
