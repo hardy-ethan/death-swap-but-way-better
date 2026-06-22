@@ -569,10 +569,7 @@ public final class GameManager {
         // Every round starts with a clean advancement book for everyone.
         clearAllAdvancements();
 
-        if (isNight) {
-            Mc.runServer(server, "time set noon");
-        }
-        isNight = false;
+        Mc.runServer(server, "time set noon");
 
         for (ServerPlayer player : participants) {
             PlayerData data = data(player);
@@ -992,10 +989,10 @@ public final class GameManager {
         // Language (item 72) is a per-game state, not a persistent setting: reset it
         // so the next game starts in English unless item 72 is used again.
         settings.language = GameSettings.Language.ENGLISH;
-        if (isNight) {
-            Mc.runServer(server, "time set noon");
-        }
+
+        Mc.runServer(server, "time set noon");
         isNight = false;
+
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
         }
