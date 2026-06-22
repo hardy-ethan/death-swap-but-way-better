@@ -996,6 +996,7 @@ public final class GameManager {
 
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
+            Mc.setSpawn(player, server.overworld(), hubSpawn, player.getYRot(), player.getXRot());
         }
         // Refresh the wins tally now everyone is back in the lobby (the winner's
         // count has gone up).
