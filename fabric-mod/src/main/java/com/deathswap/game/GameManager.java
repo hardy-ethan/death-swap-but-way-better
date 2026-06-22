@@ -269,6 +269,9 @@ public final class GameManager {
         player.setHealth(player.getMaxHealth());
         player.getFoodData().setFoodLevel(20);
         player.getFoodData().setSaturation(5.0f);
+        player.experienceLevel = 0;
+        player.experienceProgress = 0.0f;
+        player.totalExperience = 0;
         player.clearFire();
         player.fallDistance = 0.0f;
         player.getInventory().clearContent();
