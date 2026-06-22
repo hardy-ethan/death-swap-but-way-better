@@ -102,7 +102,7 @@ public final class Translator {
             Map.entry("Jumpscared", "惊吓了:"),
             Map.entry("Spawned 100 villagers at", "在其位置生成了100个村民:"),
             Map.entry("Spawned 100 Endermen at", "在其位置生成了100个末影人:"),
-            Map.entry("Summoned 20 chicken jockeys on", "在其身上召唤了20只鸡骑师:"),
+            Map.entry("Spawned 20 chicken jockeys on", "在其身上生成了20只鸡骑师:"),
 
             // ---- per-effect chat / title lines ----
             Map.entry("A gravel tower was placed right in front of you!", "一座碎石堆砌的塔就矗立在你面前!"),
@@ -320,5 +320,5 @@ public final class Translator {
             Map.entry("Summon an Ancient City below you", "在你下方建造一座古城"),
             Map.entry("Set everything around someone on fire", "将某人周围的一切付之一炬"),
             Map.entry("Spawn 100 Endermen on someone", "在某人身边生成 100 只末影人"),
-            Map.entry("Summon 20 chicken jockeys on someone", "在某人身上召唤20只鸡骑师"));
+            Map.entry("Spawn 20 chicken jockeys on someone", "在某人身上生成20只鸡骑师"));
 }

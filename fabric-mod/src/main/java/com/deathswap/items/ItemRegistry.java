@@ -1680,7 +1680,7 @@ public final class ItemRegistry {
                         spawnHorde(ctx, self, t, EntityTypes.ENDERMAN, "Spawned 100 Endermen at")).build());
 
         add(DeathSwapItem.of(111, YELLOW, ChatFormatting.YELLOW,
-                "Summon 20 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
+                "Spawn 20 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     for (int i = 0; i < 20; i++) {
                         double a = Math.random() * Math.PI * 2;
@@ -1696,7 +1696,7 @@ public final class ItemRegistry {
                     }
                     Mc.titleTimes(t, 5, 60, 15);
                     Mc.title(t, translate(ctx, "CHICKEN JOCKEYYYYYY"), " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
-                    announce(ctx.game(), self, "Summoned 20 chicken jockeys on", t, ChatFormatting.YELLOW);
+                    announce(ctx.game(), self, "Spawned 20 chicken jockeys on", t, ChatFormatting.YELLOW);
                 }).build());
     }
 
