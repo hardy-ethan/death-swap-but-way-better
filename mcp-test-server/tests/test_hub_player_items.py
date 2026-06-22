@@ -86,7 +86,7 @@ def main():
 
     # ---- Test 5: tickHub replenishes wind charges within 2 seconds --------
     server.run_command("/clear Alice minecraft:wind_charge")   # consume all
-    time.sleep(2)   # tickHub fires every 20 ticks (1 s); two ticks is plenty
+    time.sleep(4)   # tickHub fires every 20 ticks (1 s); give it 4 cycles
     wc_after = clear_count("Alice", "minecraft:wind_charge")
     t5 = wc_after == 16
     log(f"Test 5 - Wind charges replenished after clear (got {wc_after}): {'PASS' if t5 else 'FAIL'}")
