@@ -1481,6 +1481,12 @@ public final class ItemRegistry {
                         // 3.2) and projectiles within 5.2 are killed each tick.
                         AABB box = p.getBoundingBox().inflate(5.2);
                         for (Entity e : lvl.getEntitiesOfClass(Entity.class, box)) {
+                            if (e instanceof net.minecraft.world.entity.ExperienceOrb 
+                                || e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownExperienceBottle
+                                || e instanceof net.minecraft.world.entity.item.ItemEntity) {
+                                continue;
+                            }
+
                             double d = e.distanceTo(p);
                             if (e instanceof net.minecraft.world.entity.projectile.Projectile) {
                                 if (d <= 5.2) e.discard();
