@@ -1678,6 +1678,24 @@ public final class ItemRegistry {
                 "Spawn 100 Endermen on someone", "We didn't start the fire...")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) ->
                         spawnHorde(ctx, self, t, EntityTypes.ENDERMAN, "Spawned 100 Endermen at")).build());
+
+        add(DeathSwapItem.of(111, YELLOW, ChatFormatting.YELLOW,
+                "Summon 20 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    for (int i = 0; i < 20; i++) {
+                        double a = Math.random() * Math.PI * 2;
+                        double r = 1.0 + Math.random() * 2.0;
+                        net.minecraft.world.entity.animal.Chicken chicken =
+                                Mc.summonRel(t, EntityTypes.CHICKEN, Math.cos(a) * r, 0, Math.sin(a) * r);
+                        net.minecraft.world.entity.monster.Zombie zombie =
+                                Mc.summonRel(t, EntityTypes.ZOMBIE, Math.cos(a) * r, 0, Math.sin(a) * r);
+                        if (chicken != null && zombie != null) {
+                            zombie.setBaby(true);
+                            zombie.startRiding(chicken);
+                        }
+                    }
+                    announce(ctx.game(), self, "Summoned 20 chicken jockeys on", t, ChatFormatting.YELLOW);
+                }).build());
     }
 
     // ---- effect helpers ----
