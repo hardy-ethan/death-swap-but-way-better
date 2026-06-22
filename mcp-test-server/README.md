@@ -73,6 +73,16 @@ read_log(grep="Exception|ERROR")            # <-- the patch-validation signal
 server_stop()
 ```
 
+## Examples
+
+Runnable end-to-end demos live in `examples/` (each starts a server, spawns two
+bots, plays a powerup, verifies the result, and stops):
+
+```bash
+.venv/bin/python examples/self_use_powerup.py        # SELF item #2: caster gets wither materials
+.venv/bin/python examples/opponent_target_powerup.py # OPPONENT item #1: target gets speed (uses player_permno)
+```
+
 ## Notes / limits
 
 - Fake players are server-side (Carpet); `online-mode=false` is set anyway so a
