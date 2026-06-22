@@ -121,11 +121,23 @@ def main():
 
     # ---- Test 9: dying and respawning in hub restores the full kit --------
     # In HUB phase onAllowDeath returns true, so /kill causes a real death.
-    # onPlayerRespawn should call sendToHub so Alice gets her items back.
+    # onPlayerRespawn calls sendToHub for real players.  Carpet fake players
+    # disconnect on death rather than triggering AFTER_RESPAWN; if that
+    # happens we re-spawn Alice so onPlayerJoin -> sendToHub runs instead.
     server.run_command("/kill Alice")
-    time.sleep(4)   # wait for death + respawn + sendToHub
-    mace_after_respawn = clear_count("Alice", "minecraft:mace")
-    wc_after_respawn   = clear_count("Alice", "minecraft:wind_charge")
+    time.sleep(3)   # wait for death + potential respawn
+
+    online = server.players_online()
+    log(f"  Players online after kill: {online}")
+    if "Alice" not in online:
+        log("  Alice disconnected on death (Carpet behaviour); re-spawning via /player")
+        server.player_spawn("Alice")
+        time.sleep(3)
+
+    log(f"  Log around kill: {server.read_log(grep='Alice|killed|died|respawn', lines=10)}")
+
+    mace_after_respawn  = clear_count("Alice", "minecraft:mace")
+    wc_after_respawn    = clear_count("Alice", "minecraft:wind_charge")
     regen_after_respawn = has_effect("Alice", "minecraft:regeneration")
     t9 = mace_after_respawn >= 1 and wc_after_respawn == 16 and not regen_after_respawn
     log(f"Test 9 - Respawn restores hub kit (mace={mace_after_respawn}, wc={wc_after_respawn}, regen={regen_after_respawn}): {'PASS' if t9 else 'FAIL'}")
