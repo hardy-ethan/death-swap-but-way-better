@@ -66,6 +66,9 @@ public final class PlayerData {
     /** Item awaiting a target (opponent-targeted items), or null. */
     public DeathSwapItem pendingTargetItem;
 
+    /** True while the target prompt is being sent, to prevent re-entry from the message mixin. */
+    public boolean sendingTargetPrompt;
+
     public PlayerData(UUID uuid) {
         this.uuid = uuid;
     }

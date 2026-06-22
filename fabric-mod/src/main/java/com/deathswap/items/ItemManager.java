@@ -295,43 +295,60 @@ public final class ItemManager {
 
     // ---- targeting (opponent items) ----
 
-    private void promptForTarget(ServerPlayer player, DeathSwapItem item) {
-        Mc.msg(player, Component.literal(Translator.translate(game.settings().isChinese(),
-                "\n>> Click on which player you want to use this item on: "))
-                .withStyle(ChatFormatting.YELLOW)
-                .append(Component.literal(Translator.translate(game.settings().isChinese(), item.name))
-                        .withStyle(ChatFormatting.AQUA)));
+    /**
+     * Re-sends the target-selection prompt for a player who is still waiting to
+     * pick a target. Called by the message mixin whenever a non-prompt message
+     * lands in that player's chat, keeping the prompt pinned to the bottom.
+     */
+    public void repromptTarget(ServerPlayer player) {
+        PlayerData data = game.data(player);
+        if (data == null || data.pendingTargetItem == null || data.sendingTargetPrompt) return;
+        promptForTarget(player, data.pendingTargetItem);
+    }
 
-        // Every alive player is listed by their permanent number (yourself
-        // included, as in the datapack's select_template). Shielded players are
-        // shown struck-through but are NOT offered as a clickable option — except
-        // yourself, who can always be targeted (a shield blocks others' items, not
-        // your own).
-        MutableComponent line = Component.literal("");
-        MutableComponent shieldedNote = Component.literal("");
-        boolean anyShielded = false;
-        for (ServerPlayer p : game.alivePlayers()) {
-            boolean shielded = game.effects().hasEffect(p.getUUID(), "shield")
-                    && !p.getUUID().equals(player.getUUID());
-            MutableComponent chip = Component.literal("[ " + p.getName().getString() + " ]  ");
-            if (shielded) {
-                chip.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.STRIKETHROUGH);
-                if (anyShielded) {
-                    shieldedNote.append(Component.literal(", "));
+    private void promptForTarget(ServerPlayer player, DeathSwapItem item) {
+        PlayerData data = game.data(player);
+        data.sendingTargetPrompt = true;
+        try {
+            Mc.msg(player, Component.literal(Translator.translate(game.settings().isChinese(),
+                    "\n>> Click on which player you want to use this item on: "))
+                    .withStyle(ChatFormatting.YELLOW)
+                    .append(Component.literal(Translator.translate(game.settings().isChinese(), item.name))
+                            .withStyle(ChatFormatting.AQUA)));
+
+            // Every alive player is listed by their permanent number (yourself
+            // included, as in the datapack's select_template). Shielded players are
+            // shown struck-through but are NOT offered as a clickable option — except
+            // yourself, who can always be targeted (a shield blocks others' items, not
+            // your own).
+            MutableComponent line = Component.literal("");
+            MutableComponent shieldedNote = Component.literal("");
+            boolean anyShielded = false;
+            for (ServerPlayer p : game.alivePlayers()) {
+                boolean shielded = game.effects().hasEffect(p.getUUID(), "shield")
+                        && !p.getUUID().equals(player.getUUID());
+                MutableComponent chip = Component.literal("[ " + p.getName().getString() + " ]  ");
+                if (shielded) {
+                    chip.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.STRIKETHROUGH);
+                    if (anyShielded) {
+                        shieldedNote.append(Component.literal(", "));
+                    }
+                    shieldedNote.append(Component.literal(p.getName().getString()));
+                    anyShielded = true;
+                } else {
+                    chip.withStyle(Style.EMPTY.withColor(ChatFormatting.DARK_AQUA)
+                            .withClickEvent(new ClickEvent.RunCommand("/deathswap target " + game.data(p).permPNo)));
                 }
-                shieldedNote.append(Component.literal(p.getName().getString()));
-                anyShielded = true;
-            } else {
-                chip.withStyle(Style.EMPTY.withColor(ChatFormatting.DARK_AQUA)
-                        .withClickEvent(new ClickEvent.RunCommand("/deathswap target " + game.data(p).permPNo)));
+                line.append(chip);
             }
-            line.append(chip);
-        }
-        Mc.msg(player, line);
-        if (anyShielded) {
-            Mc.msg(player, shieldedNote.withStyle(ChatFormatting.ITALIC)
-                    .append(Component.literal(Translator.translate(game.settings().isChinese(),
-                            " is/are shielded from items!")).withStyle(ChatFormatting.YELLOW)));
+            Mc.msg(player, line);
+            if (anyShielded) {
+                Mc.msg(player, shieldedNote.withStyle(ChatFormatting.ITALIC)
+                        .append(Component.literal(Translator.translate(game.settings().isChinese(),
+                                " is/are shielded from items!")).withStyle(ChatFormatting.YELLOW)));
+            }
+        } finally {
+            data.sendingTargetPrompt = false;
         }
     }
 

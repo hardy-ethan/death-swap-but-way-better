@@ -7,7 +7,8 @@
 		"ChatCommandThrottleMixin",
 		"LevelSetBlockMixin",
 		"PlayerDropMixin",
-		"ScatteredFeaturePieceAccessor"
+		"ScatteredFeaturePieceAccessor",
+		"TargetPromptRepinMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
