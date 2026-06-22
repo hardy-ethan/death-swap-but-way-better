@@ -1692,7 +1692,7 @@ public final class ItemRegistry {
                         chicken.setPersistenceRequired();
                         var zombie = Mc.summonRelSafe(t, EntityTypes.ZOMBIE, dx, dz,
                                 mob -> { mob.setBaby(true); mob.setPersistenceRequired(); });
-                        if (zombie != null) zombie.startRiding(chicken, true);
+                        if (zombie != null) zombie.startRiding(chicken);
                     }
                     Mc.titleTimes(t, 5, 60, 15);
                     Mc.title(t, translate(ctx, "CHICKEN JOCKEYYYYYY"), " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
