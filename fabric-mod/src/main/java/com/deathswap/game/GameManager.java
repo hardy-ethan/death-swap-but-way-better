@@ -103,8 +103,6 @@ public final class GameManager {
     private int startingPlayerCount;
     /** Tracks which swap-warning thresholds have already fired this cycle. */
     private int lastWarnSecondAnnounced = -1;
-    /** Whether the world was last set to night by item 66. */
-    private boolean isNight = false;
     /**
      * Real-time scheduler for the empty-server idle reset, run off the game tick
      * loop so it still fires after the server pauses ticking when empty. A single
@@ -700,12 +698,12 @@ public final class GameManager {
 
     /** Item 66: toggle the overworld between midnight and noon. */
     public void toggleTime() {
-        isNight = !isNight;
-        Mc.runServer(server, isNight ? "time set midnight" : "time set noon");
+        Mc.runServer(server, isNight() ? "time set noon" : "time set midnight");
     }
 
     public boolean isNight() {
-        return isNight;
+        long time = server.overworld().getOverworldClockTime() % 24000;
+        return time >= 13000 && time < 23000;
     }
 
     /**
@@ -997,7 +995,6 @@ public final class GameManager {
         settings.language = GameSettings.Language.ENGLISH;
 
         Mc.runServer(server, "time set noon");
-        isNight = false;
 
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
