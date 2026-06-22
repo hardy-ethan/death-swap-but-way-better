@@ -1167,8 +1167,8 @@ public final class GameManager {
      */
     private net.minecraft.core.BlockPos buildHubPlatform(ServerLevel level) {
         net.minecraft.core.BlockPos feet = surfaceColumn(level, 0, 0);
-        for (int px = -2; px <= 2; px++) {
-            for (int pz = -2; pz <= 2; pz++) {
+        for (int px = -20; px <= 20; px++) {
+            for (int pz = -20; pz <= 20; pz++) {
                 level.setBlockAndUpdate(feet.offset(px, -1, pz), Blocks.STONE.defaultBlockState());
             }
         }
