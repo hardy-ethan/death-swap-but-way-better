@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "deathswap-test": {
+      "command": "mcp-test-server/.venv/bin/python",
+      "args": ["mcp-test-server/server.py"]
+    }
+  }
+}
