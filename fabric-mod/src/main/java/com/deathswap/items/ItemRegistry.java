@@ -1685,10 +1685,14 @@ public final class ItemRegistry {
                     for (int i = 0; i < 20; i++) {
                         double angle = 2 * Math.PI * i / 20;
                         double r = 1.5 + Math.random();
-                        String x = String.format(java.util.Locale.US, "~%.2f", Math.cos(angle) * r);
-                        String z = String.format(java.util.Locale.US, "~%.2f", Math.sin(angle) * r);
-                        Mc.runAt(t, "summon minecraft:chicken " + x + " ~ " + z
-                                + " {Passengers:[{id:\"minecraft:zombie\",IsBaby:1b,PersistenceRequired:1b}]}");
+                        double dx = Math.cos(angle) * r;
+                        double dz = Math.sin(angle) * r;
+                        var chicken = Mc.summonRelSafe(t, EntityTypes.CHICKEN, dx, dz);
+                        if (chicken == null) continue;
+                        chicken.setPersistenceRequired();
+                        var zombie = Mc.summonRelSafe(t, EntityTypes.ZOMBIE, dx, dz,
+                                mob -> { mob.setBaby(true); mob.setPersistenceRequired(); });
+                        if (zombie != null) zombie.startRiding(chicken, true);
                     }
                     Mc.titleTimes(t, 5, 60, 15);
                     Mc.title(t, translate(ctx, "CHICKEN JOCKEYYYYYY"), " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
