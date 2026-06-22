@@ -1,12 +1,12 @@
-name: Build Release Artifacts
+name: PR Compile Check
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
 jobs:
-  build:
+  compile:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,13 +21,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build with Gradle
+      - name: Compile
         working-directory: fabric-mod
-        run: ./gradlew build
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: deathswap-${{ github.sha }}
-          path: fabric-mod/build/libs/*.jar
-          if-no-files-found: error
+        run: ./gradlew compileJava
