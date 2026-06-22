@@ -1477,11 +1477,11 @@ public final class ItemRegistry {
                                 if (d <= 5.2) e.discard();
                             } else if (e instanceof LivingEntity le) {
                                 if (e instanceof net.minecraft.world.entity.monster.Creeper) {
-                                    if (d <= 4.5) le.hurt(lvl.damageSources().magic(), le.getHealth());
+                                    if (d <= 4.5) le.hurt(lvl.damageSources().magic(), 9999999f);
                                 } else if (e instanceof Monster
                                         || e instanceof net.minecraft.world.entity.monster.Ghast
                                         || e instanceof net.minecraft.world.entity.animal.bee.Bee) {
-                                    if (d <= 3.2) le.hurt(lvl.damageSources().magic(), le.getHealth());
+                                    if (d <= 3.2) le.hurt(lvl.damageSources().magic(), 9999999f);
                                 }
                             }
                         }
