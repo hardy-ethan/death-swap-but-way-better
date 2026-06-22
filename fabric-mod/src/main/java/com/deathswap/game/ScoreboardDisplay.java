@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.ScoreHolder;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 
@@ -99,21 +100,30 @@ final class ScoreboardDisplay {
         }
     }
 
-    /** Drop a player's sidebar row from whichever phase HUD is showing (e.g. on disconnect). */
-    void removePlayer(ServerPlayer player) {
+    /** Set the lives score for an offline player by name. */
+    void updateLivesForName(String name, int lives) {
         if (server == null) {
             return;
         }
         Scoreboard board = server.getScoreboard();
-        resetScore(board, LIVES_OBJECTIVE, player);
-        resetScore(board, WINS_OBJECTIVE, player);
+        Objective obj = board.getObjective(LIVES_OBJECTIVE);
+        if (obj == null) {
+            return;
+        }
+        board.getOrCreatePlayerScore(ScoreHolder.forNameOnly(name), obj).set(lives);
     }
 
-    private static void resetScore(Scoreboard board, String name, ServerPlayer player) {
-        Objective objective = board.getObjective(name);
-        if (objective != null) {
-            board.resetSinglePlayerScore(player, objective);
+    /** Set the wins score for an offline player by name. */
+    void updateWinsForName(String name, int wins) {
+        if (server == null) {
+            return;
         }
+        Scoreboard board = server.getScoreboard();
+        Objective obj = board.getObjective(WINS_OBJECTIVE);
+        if (obj == null) {
+            return;
+        }
+        board.getOrCreatePlayerScore(ScoreHolder.forNameOnly(name), obj).set(wins);
     }
 
     private static Objective recreate(Scoreboard board, String name, ObjectiveCriteria criteria,
