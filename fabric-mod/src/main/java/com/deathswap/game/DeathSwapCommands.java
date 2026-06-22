@@ -93,7 +93,25 @@ public final class DeathSwapCommands {
                                         return 0;
                                     }
                                     return 1;
-                                })))
+                                })
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .executes(ctx -> {
+                                            ServerPlayer target;
+                                            try {
+                                                target = EntityArgument.getPlayer(ctx, "player");
+                                            } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+                                                ctx.getSource().sendFailure(Component.literal("Player not found."));
+                                                return 0;
+                                            }
+                                            int id = IntegerArgumentType.getInteger(ctx, "id");
+                                            if (!game.items().giveById(target, id)) {
+                                                ctx.getSource().sendFailure(Component.literal(
+                                                        "No item with id " + id + " (valid: 1.."
+                                                                + game.items().maxItemId() + ")."));
+                                                return 0;
+                                            }
+                                            return 1;
+                                        }))))
                 // ---- query: a player's permanent number (item targeting / tooling) ----
                 .then(Commands.literal("permno")
                         .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
