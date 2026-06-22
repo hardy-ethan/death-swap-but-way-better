@@ -256,7 +256,9 @@ public final class GameManager {
         effects.clearAll(player);
         resetPlayerStats(player);
         Mc.infiniteEffect(player, MobEffects.SATURATION, 254);
-        Mc.give(player, net.minecraft.world.item.Items.MACE, 1);
+        ItemStack mace = new ItemStack(net.minecraft.world.item.Items.MACE, 1);
+        mace.set(DataComponents.UNBREAKABLE, net.minecraft.util.Unit.INSTANCE);
+        Mc.giveStack(player, mace);
         Mc.give(player, net.minecraft.world.item.Items.WIND_CHARGE, 16);
         teleportToWorldSpawn(player);
     }
@@ -302,10 +304,20 @@ public final class GameManager {
         switch (phase) {
             case RUNNING -> tickRunning();
             case ENDING -> tickEnding();
-            case HUB -> {}
+            case HUB -> tickHub()
         }
         if (server.getTickCount() % 20 == 0) {
             updateTabListFooter();
+        }
+    }
+
+    private void tickHub() {
+        if (server.getTickCount() % 20 != 0) return;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            int have = player.getInventory().countItem(net.minecraft.world.item.Items.WIND_CHARGE);
+            if (have < 16) {
+                Mc.give(player, net.minecraft.world.item.Items.WIND_CHARGE, 16 - have);
+            }
         }
     }
 
