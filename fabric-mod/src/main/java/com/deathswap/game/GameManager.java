@@ -304,7 +304,7 @@ public final class GameManager {
         switch (phase) {
             case RUNNING -> tickRunning();
             case ENDING -> tickEnding();
-            case HUB -> tickHub()
+            case HUB -> tickHub();
         }
         if (server.getTickCount() % 20 == 0) {
             updateTabListFooter();
