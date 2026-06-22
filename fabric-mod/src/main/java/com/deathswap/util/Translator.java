@@ -102,6 +102,7 @@ public final class Translator {
             Map.entry("Jumpscared", "惊吓了:"),
             Map.entry("Spawned 100 villagers at", "在其位置生成了100个村民:"),
             Map.entry("Spawned 100 Endermen at", "在其位置生成了100个末影人:"),
+            Map.entry("Summoned 20 chicken jockeys on", "在其身上召唤了20只鸡骑师:"),
 
             // ---- per-effect chat / title lines ----
             Map.entry("A gravel tower was placed right in front of you!", "一座碎石堆砌的塔就矗立在你面前!"),
@@ -147,6 +148,7 @@ public final class Translator {
             Map.entry(">> The earthquake has concluded! You are safe now! <<", ">> 地震已经结束! 你现在安全了! <<"),
             Map.entry("The Việt Cộng", "越共"),
             Map.entry("One-hit-kill -- ONE USE!", "一击必杀 -- 仅限一次使用!"),
+            Map.entry("CHICKEN JOCKEYYYYYY", "鸡骑师!!!!!!!"),
 
             // ---- interpolated item messages (player name/number spliced at call site) ----
             Map.entry("Powerup slot — items appear here", "能力物品栏 — 物品会出现在这里"),
@@ -317,5 +319,6 @@ public final class Translator {
             Map.entry("Summon Oppenheimer's NUCLEAR bomb on someone", "Oppenheimer对某人召唤奥本海默的核弹"),
             Map.entry("Summon an Ancient City below you", "在你下方建造一座古城"),
             Map.entry("Set everything around someone on fire", "将某人周围的一切付之一炬"),
-            Map.entry("Spawn 100 Endermen on someone", "在某人身边生成 100 只末影人"));
+            Map.entry("Spawn 100 Endermen on someone", "在某人身边生成 100 只末影人"),
+            Map.entry("Summon 20 chicken jockeys on someone", "在某人身上召唤20只鸡骑师"));
 }

@@ -1695,7 +1695,7 @@ public final class ItemRegistry {
                         }
                     }
                     Mc.titleTimes(t, 5, 60, 15);
-                    Mc.title(t, "CHICKEN JOCKEYYYYYY", " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
+                    Mc.title(t, translate(ctx, "CHICKEN JOCKEYYYYYY"), " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Summoned 20 chicken jockeys on", t, ChatFormatting.YELLOW);
                 }).build());
     }
