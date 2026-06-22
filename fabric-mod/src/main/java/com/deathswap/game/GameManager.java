@@ -255,8 +255,9 @@ public final class GameManager {
         player.setGameMode(GameType.ADVENTURE);
         effects.clearAll(player);
         resetPlayerStats(player);
-        Mc.infiniteEffect(player, MobEffects.REGENERATION, 254);
         Mc.infiniteEffect(player, MobEffects.SATURATION, 254);
+        Mc.give(player, net.minecraft.world.item.Items.MACE, 1);
+        Mc.give(player, net.minecraft.world.item.Items.WIND_CHARGE, 16);
         teleportToWorldSpawn(player);
     }
 
