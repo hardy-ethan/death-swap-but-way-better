@@ -18,6 +18,9 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Build with Gradle
         working-directory: fabric-mod
         run: ./gradlew build
