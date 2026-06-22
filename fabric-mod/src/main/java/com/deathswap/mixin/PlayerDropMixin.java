@@ -40,8 +40,12 @@ public abstract class PlayerDropMixin {
             return;
         }
         // Hub items (mace + wind charges) are not droppable.
+        // The item has already been removed from the slot before this method
+        // is called, so we must add it back explicitly before cancelling the
+        // entity spawn — otherwise it silently disappears.
         if (game.phase() == GamePhase.HUB
                 && (stack.is(Items.MACE) || stack.is(Items.WIND_CHARGE))) {
+            player.getInventory().add(stack);
             cir.setReturnValue(null);
         }
     }

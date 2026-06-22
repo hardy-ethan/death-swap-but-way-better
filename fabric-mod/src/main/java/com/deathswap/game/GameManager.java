@@ -256,17 +256,13 @@ public final class GameManager {
         effects.clearAll(player);
         resetPlayerStats(player);
         Mc.infiniteEffect(player, MobEffects.SATURATION, 254);
+        ItemStack mace = new ItemStack(net.minecraft.world.item.Items.MACE, 1);
+        mace.set(DataComponents.UNBREAKABLE, net.minecraft.util.Unit.INSTANCE);
+        // Use setItem directly so the items land in known slots without going
+        // through the add→drop fallback that the PlayerDropMixin now intercepts.
+        player.getInventory().setItem(0, mace);
+        player.getInventory().setItem(1, new ItemStack(net.minecraft.world.item.Items.WIND_CHARGE, 16));
         teleportToWorldSpawn(player);
-        // Defer the item give by one tick so fake-player inventory is fully
-        // initialised before we try to fill it (Carpet's spawn path can still
-        // be manipulating the inventory at the point onPlayerJoin fires).
-        server.execute(() -> {
-            if (player.hasDisconnected()) return;
-            ItemStack mace = new ItemStack(net.minecraft.world.item.Items.MACE, 1);
-            mace.set(DataComponents.UNBREAKABLE, net.minecraft.util.Unit.INSTANCE);
-            Mc.giveStack(player, mace);
-            Mc.give(player, net.minecraft.world.item.Items.WIND_CHARGE, 16);
-        });
     }
 
     /**
