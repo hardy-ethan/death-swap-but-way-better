@@ -50,6 +50,7 @@ venv is used automatically and the server loads in a Claude Code session.
 | `player_action(name, action, args="")` | Drive a fake player via `/player <name> <action> <args>`: `use`, `attack`, `jump`, `sneak`, `sprint`, `drop`, `dropStack`, `swapHands`, `hotbar <1-9>`, `move <forward\|backward\|left\|right>`, `turn ...`, `look ...`. **`drop`** (after `hotbar <slot>`) triggers the drop-to-select mechanic (`PlayerDropMixin`). |
 | `player_despawn(name)` | Remove a fake player (`/player <name> kill`). |
 | `players_online()` | `/list` over RCON. |
+| `player_permno(name)` | A player's permanent number (`permPNo`) for opponent targeting — wraps the `/deathswap permno` command. permNos are shuffled at game start and in-memory only, so this is the reliable way to find which number `/deathswap target <permNo>` should use. |
 
 Everything runs under `fabric-mod/run/` (gitignored), so nothing here mutates
 committed map data.

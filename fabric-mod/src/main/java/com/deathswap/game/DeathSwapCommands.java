@@ -94,6 +94,12 @@ public final class DeathSwapCommands {
                                     }
                                     return 1;
                                 })))
+                // ---- query: a player's permanent number (item targeting / tooling) ----
+                .then(Commands.literal("permno")
+                        .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .executes(ctx -> listPermNos(ctx, game))
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(ctx -> permNo(ctx, game))))
                 // ---- rules ----
                 .then(Commands.literal("set")
                         .then(Commands.literal("lives")
@@ -226,6 +232,48 @@ public final class DeathSwapCommands {
             return 0;
         }
         return 1;
+    }
+
+    /**
+     * Report one player's permanent number. The number is also returned as the
+     * command result, so {@code /execute store result ...} (or an RCON caller)
+     * can capture it directly instead of parsing chat. permNos are assigned at
+     * game start and are 1..N, so 0 cleanly signals "no number yet".
+     */
+    private static int permNo(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+                              GameManager game) {
+        ServerPlayer target;
+        try {
+            target = EntityArgument.getPlayer(ctx, "player");
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            ctx.getSource().sendFailure(Component.literal("Player not found."));
+            return 0;
+        }
+        int no = game.data(target).permPNo;
+        if (no <= 0) {
+            ctx.getSource().sendFailure(Component.literal(
+                    target.getScoreboardName() + " has no permNo (no game in progress)."));
+            return 0;
+        }
+        ctx.getSource().sendSuccess(() -> Component.literal(
+                target.getScoreboardName() + " permNo " + no).withStyle(ChatFormatting.AQUA), false);
+        return no;
+    }
+
+    /** List every alive player with their permanent number; returns the count. */
+    private static int listPermNos(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,
+                                   GameManager game) {
+        java.util.List<ServerPlayer> alive = game.alivePlayers();
+        if (alive.isEmpty()) {
+            ctx.getSource().sendFailure(Component.literal("No alive players (no game in progress)."));
+            return 0;
+        }
+        for (ServerPlayer p : alive) {
+            int no = game.data(p).permPNo;
+            ctx.getSource().sendSuccess(() -> Component.literal(
+                    p.getScoreboardName() + " permNo " + no).withStyle(ChatFormatting.AQUA), false);
+        }
+        return alive.size();
     }
 
     private static int report(com.mojang.brigadier.context.CommandContext<CommandSourceStack> ctx,

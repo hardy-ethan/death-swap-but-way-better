@@ -460,6 +460,18 @@ def players_online() -> str:
     return run_command("list")
 
 
+def player_permno(name: str) -> str:
+    """Fetch a player's permanent number (`permPNo`) for item targeting.
+
+    permNos are shuffled at game start and held only in memory, so this is the
+    reliable way to find which number `/deathswap target <permNo>` should use
+    for a given opponent. Wraps `/deathswap permno <name>` (gamemaster command,
+    available over RCON). Call with no game running and it reports that there is
+    no permNo yet.
+    """
+    return run_command(f"/deathswap permno {name}")
+
+
 # --------------------------------------------------------------------------
 # MCP wiring
 # --------------------------------------------------------------------------
@@ -469,7 +481,7 @@ def build_mcp():
     mcp = FastMCP("deathswap-test")
     for fn in (provision, server_start, server_stop, server_status,
                run_command, read_log, player_spawn, player_action,
-               player_despawn, players_online):
+               player_despawn, players_online, player_permno):
         mcp.tool()(fn)
     return mcp
 
