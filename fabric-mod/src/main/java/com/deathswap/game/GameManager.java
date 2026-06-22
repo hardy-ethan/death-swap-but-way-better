@@ -318,6 +318,11 @@ public final class GameManager {
             if (have < 16) {
                 Mc.give(player, net.minecraft.world.item.Items.WIND_CHARGE, 16 - have);
             }
+            if (player.getInventory().countItem(net.minecraft.world.item.Items.MACE) == 0) {
+                ItemStack mace = new ItemStack(net.minecraft.world.item.Items.MACE, 1);
+                mace.set(DataComponents.UNBREAKABLE, net.minecraft.util.Unit.INSTANCE);
+                Mc.giveStack(player, mace);
+            }
         }
     }
 

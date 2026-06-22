@@ -1,9 +1,11 @@
 package com.deathswap.mixin;
 
 import com.deathswap.DeathSwapMod;
+import com.deathswap.game.GamePhase;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -30,10 +32,17 @@ public abstract class PlayerDropMixin {
     private void deathswap$onDrop(ItemStack stack, boolean throwRandomly, boolean retainOwnership,
                                   CallbackInfoReturnable<ItemEntity> cir) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        if (DeathSwapMod.game() != null
-                && DeathSwapMod.game().items().isOfferStack(stack)) {
-            DeathSwapMod.game().items().onItemTriggered(player, stack);
+        if (DeathSwapMod.game() == null) return;
+        var game = DeathSwapMod.game();
+        if (game.items().isOfferStack(stack)) {
+            game.items().onItemTriggered(player, stack);
             cir.setReturnValue(null); // swallow the drop; the item was "used"
+            return;
+        }
+        // Hub items (mace + wind charges) are not droppable.
+        if (game.phase() == GamePhase.HUB
+                && (stack.is(Items.MACE) || stack.is(Items.WIND_CHARGE))) {
+            cir.setReturnValue(null);
         }
     }
 }
