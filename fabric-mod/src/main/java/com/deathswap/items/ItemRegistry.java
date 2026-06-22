@@ -1683,16 +1683,12 @@ public final class ItemRegistry {
                 "Spawn 20 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
                     for (int i = 0; i < 20; i++) {
-                        double a = Math.random() * Math.PI * 2;
-                        double r = 1.0 + Math.random() * 2.0;
-                        net.minecraft.world.entity.animal.Chicken chicken =
-                                Mc.summonRel(t, EntityTypes.CHICKEN, Math.cos(a) * r, 0, Math.sin(a) * r);
-                        net.minecraft.world.entity.monster.Zombie zombie =
-                                Mc.summonRel(t, EntityTypes.ZOMBIE, Math.cos(a) * r, 0, Math.sin(a) * r);
-                        if (chicken != null && zombie != null) {
-                            zombie.setBaby(true);
-                            zombie.startRiding(chicken);
-                        }
+                        double angle = 2 * Math.PI * i / 20;
+                        double r = 1.5 + Math.random();
+                        String x = String.format(java.util.Locale.US, "~%.2f", Math.cos(angle) * r);
+                        String z = String.format(java.util.Locale.US, "~%.2f", Math.sin(angle) * r);
+                        Mc.runAt(t, "summon minecraft:chicken " + x + " ~ " + z
+                                + " {Passengers:[{id:\"minecraft:zombie\",IsBaby:1b,PersistenceRequired:1b}]}");
                     }
                     Mc.titleTimes(t, 5, 60, 15);
                     Mc.title(t, translate(ctx, "CHICKEN JOCKEYYYYYY"), " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
