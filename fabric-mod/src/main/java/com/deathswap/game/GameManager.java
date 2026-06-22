@@ -24,6 +24,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -272,6 +273,7 @@ public final class GameManager {
         player.experienceLevel = 0;
         player.experienceProgress = 0.0f;
         player.totalExperience = 0;
+        player.resetStat(Stats.CUSTOM.get(Stats.TIME_SINCE_REST));
         player.clearFire();
         player.fallDistance = 0.0f;
         player.getInventory().clearContent();
