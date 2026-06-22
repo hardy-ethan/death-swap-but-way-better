@@ -91,10 +91,6 @@ public final class ItemRegistry {
         return pool.size() <= 3 ? pool : pool.subList(0, 3);
     }
 
-    public void registerAll() {
-        registerItems();
-    }
-
     // ---- shared helpers ----
 
     private static void announce(com.deathswap.game.GameManager game, ServerPlayer self,
@@ -244,7 +240,7 @@ public final class ItemRegistry {
         };
     }
 
-    private void registerItems() {
+    public void registerAll() {
         add(DeathSwapItem.of(1, LIGHT_BLUE, ChatFormatting.AQUA,
                 "Give a player speed 1 billion: 40 secs", "Even the Flash can't keep up with this level of speed")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
