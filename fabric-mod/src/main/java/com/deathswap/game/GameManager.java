@@ -861,8 +861,13 @@ public final class GameManager {
     /**
      * Re-supply the starter kit when an active participant respawns empty-handed,
      * so a death/relog that wiped their inventory doesn't leave them defenseless.
+     * In hub phase, restore the full hub loadout (mace + wind charges).
      */
     public void onPlayerRespawn(ServerPlayer player) {
+        if (phase == GamePhase.HUB) {
+            sendToHub(player);
+            return;
+        }
         if (phase != GamePhase.RUNNING || !settings.startWithBasicTools) {
             return;
         }
