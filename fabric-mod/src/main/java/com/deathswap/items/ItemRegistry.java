@@ -1481,9 +1481,11 @@ public final class ItemRegistry {
                         // 3.2) and projectiles within 5.2 are killed each tick.
                         AABB box = p.getBoundingBox().inflate(5.2);
                         for (Entity e : lvl.getEntitiesOfClass(Entity.class, box)) {
-                            if (e instanceof net.minecraft.world.entity.ExperienceOrb 
+                            if (e instanceof net.minecraft.world.entity.ExperienceOrb
                                 || e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownExperienceBottle
-                                || e instanceof net.minecraft.world.entity.item.ItemEntity) {
+                                || e instanceof net.minecraft.world.entity.item.ItemEntity
+                                || e instanceof net.minecraft.world.entity.AreaEffectCloud
+                                || e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion tp && hasBeneficialEffect(tp.getItem())) {
                                 continue;
                             }
 
@@ -1831,6 +1833,16 @@ public final class ItemRegistry {
                 }
             }
         }
+    }
+
+    private static boolean hasBeneficialEffect(net.minecraft.world.item.ItemStack stack) {
+        net.minecraft.world.item.alchemy.PotionContents contents =
+            stack.getOrDefault(net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+                net.minecraft.world.item.alchemy.PotionContents.EMPTY);
+        for (net.minecraft.world.effect.MobEffectInstance e : contents.getAllEffects()) {
+            if (e.getEffect().value().isBeneficial()) return true;
+        }
+        return false;
     }
 
     private static void replaceBlock(ServerLevel level, BlockPos c1, BlockPos c2,
