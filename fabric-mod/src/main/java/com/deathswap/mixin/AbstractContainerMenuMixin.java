@@ -31,6 +31,13 @@ public abstract class AbstractContainerMenuMixin {
             return;
         }
 
+        // While the game is paused, freeze all inventory interaction.
+        if (DeathSwapMod.game() != null && DeathSwapMod.game().isPaused()) {
+            ci.cancel();
+            serverPlayer.containerMenu.sendAllDataToRemote();
+            return;
+        }
+
         boolean blockClick = false;
 
         // 1. Check if the clicked slot itself is a powerup slot (hotbar slot 6, 7, or 8).

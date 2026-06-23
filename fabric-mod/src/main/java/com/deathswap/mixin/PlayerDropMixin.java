@@ -34,6 +34,12 @@ public abstract class PlayerDropMixin {
         ServerPlayer player = (ServerPlayer) (Object) this;
         if (DeathSwapMod.game() == null) return;
         var game = DeathSwapMod.game();
+        if (game.isPaused()) {
+            player.getInventory().setItem(player.getInventory().getSelectedSlot(), stack);
+            player.containerMenu.sendAllDataToRemote();
+            cir.setReturnValue(null);
+            return;
+        }
         if (game.items().isOfferStack(stack)) {
             game.items().onItemTriggered(player, stack);
             cir.setReturnValue(null); // swallow the drop; the item was "used"

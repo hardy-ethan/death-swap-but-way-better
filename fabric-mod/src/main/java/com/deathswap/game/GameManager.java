@@ -33,6 +33,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.network.protocol.game.ClientboundTabListPacket;
+import net.minecraft.network.protocol.game.ClientboundUpdateMobEffectPacket;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -100,6 +101,12 @@ public final class GameManager {
     private int swapTicksRemaining;
     private int itemTicksRemaining;
     private int endingTicksRemaining;
+    /** True while the game is operator-paused (see {@link #pauseGame()}). */
+    private boolean paused;
+    /** Real-time ticks elapsed since the current pause began, for the on-screen clock. */
+    private int pausedTicks;
+    /** Where each alive player stood when the pause began, so they're held in place. */
+    private final Map<UUID, Vec3> pausePositions = new HashMap<>();
     /** Pre-game freeze countdown; while > 0 players are blinded and held in place. */
     private int freezeTicksRemaining;
     /** Ticks elapsed since the current game started (freeze + active play). */
@@ -183,6 +190,11 @@ public final class GameManager {
 
     public GamePhase phase() {
         return phase;
+    }
+
+    /** True while the game is operator-paused (read by the damage event and mixins). */
+    public boolean isPaused() {
+        return paused;
     }
 
     public PlayerData data(ServerPlayer player) {
@@ -294,6 +306,10 @@ public final class GameManager {
 
     public void tick() {
         if (server == null) {
+            return;
+        }
+        if (paused) {
+            tickPaused();
             return;
         }
         runScheduled();
@@ -547,13 +563,7 @@ public final class GameManager {
 
         Component footer;
         if (phase == GamePhase.RUNNING) {
-            int totalSeconds = gameTicksElapsed / 20;
-            int hours = totalSeconds / 3600;
-            int minutes = (totalSeconds % 3600) / 60;
-            int seconds = totalSeconds % 60;
-            String gameTime = hours > 0
-                    ? String.format("%d:%02d:%02d", hours, minutes, seconds)
-                    : String.format("%d:%02d", minutes, seconds);
+            String gameTime = formatClock(gameTicksElapsed / 20);
             footer = Component.literal(clocks).withStyle(ChatFormatting.GREEN)
                     .append(Component.literal("\nGame Duration: " + gameTime).withStyle(ChatFormatting.DARK_GREEN));
         } else {
@@ -608,6 +618,104 @@ public final class GameManager {
         if (--endingTicksRemaining <= 0) {
             returnEveryoneToHub();
         }
+    }
+
+    // ---- pause / unpause ----
+
+    /**
+     * Operator pause: completely freeze a running game. Freezes the world via the
+     * vanilla tick-rate manager (the engine behind {@code /tick freeze}: mobs, block
+     * entities, weather, random/scheduled/fluid block updates), stops every game
+     * clock by short-circuiting {@link #tick()}, and holds players in place. Player
+     * input, damage and per-player effect ticking are frozen by the damage event and
+     * the {@code ServerPlayer.tick}/container mixins, which all read {@link #isPaused()}.
+     *
+     * <p>Only valid for a running game; refused from the hub/ending or when already
+     * paused. Returns true on success.
+     */
+    public boolean pauseGame() {
+        if (phase != GamePhase.RUNNING || paused) {
+            return false;
+        }
+        paused = true;
+        pausedTicks = 0;
+        server.tickRateManager().setFrozen(true);
+        // Snapshot where everyone is standing so tickPaused() can hold them there.
+        pausePositions.clear();
+        for (ServerPlayer player : alivePlayers()) {
+            pausePositions.put(player.getUUID(), player.position());
+        }
+        broadcast(">> Game paused by an operator. <<", ChatFormatting.YELLOW);
+        showPauseOverlay();
+        return true;
+    }
+
+    /** Resume a paused game. Refused when the game isn't paused. Returns true on success. */
+    public boolean unpauseGame() {
+        if (!paused) {
+            return false;
+        }
+        paused = false;
+        pausePositions.clear();
+        server.tickRateManager().setFrozen(false);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Mc.clearTitles(player);
+        }
+        broadcast(">> Game resumed. <<", ChatFormatting.GREEN);
+        return true;
+    }
+
+    /**
+     * Paused-state tick: hold every player at the spot they paused on and keep the
+     * "PAUSED m:ss" overlay refreshed. The world is already frozen by the tick-rate
+     * manager; players aren't (vanilla excludes them), so we zero their velocity and
+     * snap them back if they drift, mirroring the pre-game {@link #tickFreeze()}.
+     */
+    private void tickPaused() {
+        pausedTicks++;
+        for (ServerPlayer player : alivePlayers()) {
+            Vec3 held = pausePositions.get(player.getUUID());
+            if (held == null) {
+                continue;
+            }
+            player.setDeltaMovement(Vec3.ZERO);
+            player.fallDistance = 0.0f;
+            if (!player.position().closerThan(held, 0.1)) {
+                Mc.teleport(player, held.x, held.y, held.z);
+            }
+        }
+        // Titles fade after their stay time, so re-send the overlay each second with
+        // the updated elapsed clock.
+        // if (pausedTicks % 20 == 0) {
+            showPauseOverlay();
+            updateTabListFooter();
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                for (var effect : player.getActiveEffects()) {
+                    player.connection.send(new ClientboundUpdateMobEffectPacket(player.getId(), effect, false));
+                }
+            }
+        // }
+    }
+
+    /** Show the centered "PAUSED m:ss" title to everyone online. */
+    private void showPauseOverlay() {
+        Component title = Component.literal("PAUSED " + formatClock(pausedTicks / 20))
+                .withStyle(ChatFormatting.RED);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            // Long stay so the title persists between the per-second refreshes.
+            Mc.titleTimes(player, 0, 40, 0);
+            Mc.titleOnly(player, title);
+        }
+    }
+
+    /** Format whole seconds as {@code m:ss} (or {@code h:mm:ss} past an hour). */
+    private static String formatClock(int totalSeconds) {
+        int hours = totalSeconds / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        int seconds = totalSeconds % 60;
+        return hours > 0
+                ? String.format("%d:%02d:%02d", hours, minutes, seconds)
+                : String.format("%d:%02d", minutes, seconds);
     }
 
     // ---- phase transitions ----
@@ -1052,6 +1160,11 @@ public final class GameManager {
 
     private void returnEveryoneToHub() {
         phase = GamePhase.HUB;
+        // Safety net: if the game is stopped while paused, lift the world freeze and
+        // clear the overlay so the hub (and next game) runs normally.
+        if (paused) {
+            unpauseGame();
+        }
         applyGameRules();
         // Swap the game's lives/health HUD back to the hub's wins tally.
         scoreboard.startHub(server, zh());
