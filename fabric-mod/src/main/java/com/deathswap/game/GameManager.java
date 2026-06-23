@@ -1050,6 +1050,11 @@ public final class GameManager {
     private void returnEveryoneToHub() {
         phase = GamePhase.HUB;
         applyGameRules();
+        // Clear per-round state so offline players from this game don't bleed
+        // playing/lives data into the next game's sidebar.
+        for (PlayerData d : playerData.values()) {
+            d.resetForHub();
+        }
         // Swap the game's lives/health HUD back to the hub's wins tally.
         scoreboard.startHub(server, zh());
         // Don't discard the cache: a destination is removed from it the moment it's

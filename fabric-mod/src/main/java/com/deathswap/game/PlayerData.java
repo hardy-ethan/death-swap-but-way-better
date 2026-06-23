@@ -97,4 +97,19 @@ public final class PlayerData {
         spawnYaw = 0.0f;
         clearOffer();
     }
+
+    /** Clear all round-specific state when returning to the hub between games. */
+    public void resetForHub() {
+        lives = 0;
+        permPNo = 0;
+        swapPNo = 0;
+        playing = false;
+        eliminated = false;
+        winner = false;
+        deathImmunityTicks = 0;
+        canTpAway = false;
+        spawnPos = null;
+        spawnYaw = 0.0f;
+        clearOffer();
+    }
 }
