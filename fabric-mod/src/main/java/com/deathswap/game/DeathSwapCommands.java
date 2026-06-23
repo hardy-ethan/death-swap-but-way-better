@@ -54,6 +54,24 @@ public final class DeathSwapCommands {
                             game.forceReturnToHub();
                             return 1;
                         }))
+                .then(Commands.literal("pause")
+                        .executes(ctx -> {
+                            if (!game.pauseGame(ctx.getSource().getTextName())) {
+                                ctx.getSource().sendFailure(Component.literal(game.isPaused()
+                                        ? "The game is already paused."
+                                        : "No running game to pause."));
+                                return 0;
+                            }
+                            return 1;
+                        }))
+                .then(Commands.literal("unpause")
+                        .executes(ctx -> {
+                            if (!game.unpauseGame()) {
+                                ctx.getSource().sendFailure(Component.literal("The game is not paused."));
+                                return 0;
+                            }
+                            return 1;
+                        }))
                 // ---- free region files + re-roll the seed (shuts the server
                 //      down; an external restart wrapper brings it back on the new seed) ----
                 .then(Commands.literal("resetworld")
