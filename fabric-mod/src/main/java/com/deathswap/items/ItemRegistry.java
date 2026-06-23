@@ -1680,23 +1680,26 @@ public final class ItemRegistry {
                         spawnHorde(ctx, self, t, EntityTypes.ENDERMAN, "Spawned 100 Endermen at")).build());
 
         add(DeathSwapItem.of(111, YELLOW, ChatFormatting.YELLOW,
-                "Spawn 20 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
+                "Spawn 3 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    for (int i = 0; i < 20; i++) {
-                        double angle = 2 * Math.PI * i / 20;
+                    for (int i = 0; i < 3; i++) {
+                        double angle = 2 * Math.PI * i / 3;
                         double r = 1.5 + Math.random();
                         double dx = Math.cos(angle) * r;
                         double dz = Math.sin(angle) * r;
-                        var chicken = Mc.summonRelSafe(t, EntityTypes.CHICKEN, dx, dz);
+                        var chicken = Mc.summonRel(t, EntityTypes.CHICKEN, dx, 3.0, dz);
                         if (chicken == null) continue;
                         chicken.setPersistenceRequired();
-                        var zombie = Mc.summonRelSafe(t, EntityTypes.ZOMBIE, dx, dz,
-                                mob -> { mob.setBaby(true); mob.setPersistenceRequired(); });
-                        if (zombie != null) zombie.startRiding(chicken);
+                        var zombie = Mc.summonRel(t, EntityTypes.ZOMBIE, dx, 3.0, dz);
+                        if (zombie != null) {
+                            zombie.setBaby(true);
+                            zombie.setPersistenceRequired();
+                            zombie.startRiding(chicken);
+                        }
                     }
                     Mc.titleTimes(t, 5, 60, 15);
                     Mc.title(t, translate(ctx, "CHICKEN JOCKEYYYYYY"), " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
-                    announce(ctx.game(), self, "Spawned 20 chicken jockeys on", t, ChatFormatting.YELLOW);
+                    announce(ctx.game(), self, "Spawned 3 chicken jockeys on", t, ChatFormatting.YELLOW);
                 }).build());
     }
 

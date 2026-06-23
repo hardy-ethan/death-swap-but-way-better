@@ -81,10 +81,10 @@ def main():
     server.server_stop()
 
     # Pass conditions:
-    #   - At least one chicken spawned (native entity path exercised)
+    #   - All 3 chickens spawned (native entity path exercised)
     #   - All chickens have a zombie passenger (startRiding worked)
     #   - All zombie riders are babies (setBaby worked)
-    spawned     = chickens >= 1
+    spawned     = chickens == 3
     all_mounted = jockey_chicks == chickens
     all_babies  = baby_zombies == jockey_chicks
 
@@ -92,7 +92,7 @@ def main():
     log(f"\nRESULT: {'PASS' if ok else 'FAIL'}")
     if not ok:
         if not spawned:
-            log("  FAIL: no chickens spawned — native entity path not exercised")
+            log(f"  FAIL: {chickens}/3 chickens spawned — native entity path not fully exercised")
         if not all_mounted:
             log(f"  FAIL: {jockey_chicks}/{chickens} chickens have a zombie rider"
                 " — startRiding may not have worked")
