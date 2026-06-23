@@ -1543,26 +1543,17 @@ public final class ItemRegistry {
                     // player's feet — the visible pee stream. (The old version only
                     // played a quiet splash sound, so it appeared to do nothing.)
                     ctx.effects().apply(t, new ActiveEffect("is_peeing", 61 * 20, p -> {
-                        // setblock ~ ~ ~ water[level=2]: flowing water at the feet that
-                        // decays/flows away on its own (the update lets it tick to air),
-                        // so it leaves a brief stream rather than flooding the world.
+                        // Repaint the ds:pee_water biome (yellow water_color) every 10 ticks
+                        // so vanilla water rendering shows yellow; the biome change persists
+                        // in the chunk but the world resets between rounds anyway.
                         ServerLevel lvl = Mc.level(p);
                         BlockPos feet = p.blockPosition();
                         if (lvl.getBlockState(feet).isAir()) {
                             Mc.setState(lvl, feet, Mc.flowingWater(2));
                         }
-                        if (!p.onGround()) {
-                            return;
-                        }
-                        BlockPos below = feet.below();
-                        VoxelShape shape = lvl.getBlockState(below).getCollisionShape(lvl, below);
-                        if (shape.isEmpty()) {
-                            return;
-                        }
-                        Mc.setBlockFast(lvl, below, Blocks.WOOL.yellow());
-                        double woolTop = below.getY() + 1;
-                        if (p.getY() < woolTop) {
-                            Mc.teleport(p, p.getX(), woolTop, p.getZ());
+                        if (p.tickCount % 10 == 0) {
+                            Mc.fillBiome(lvl, feet.offset(-2, -2, -2), feet.offset(2, 2, 2),
+                                    Identifier.fromNamespaceAndPath("ds", "pee_water"));
                         }
                     }, null));
                     Mc.title(t, " ", translate(ctx, "You are peeing..."), ChatFormatting.WHITE, ChatFormatting.YELLOW);
