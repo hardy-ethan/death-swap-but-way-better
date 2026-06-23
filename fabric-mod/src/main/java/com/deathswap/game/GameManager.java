@@ -85,6 +85,7 @@ public final class GameManager {
     private final WinsStore winsStore = new WinsStore();
     private final ItemManager items;
     private final Map<UUID, PlayerData> playerData = new HashMap<>();
+    private final Map<UUID, String> playerNames = new HashMap<>();
     private final List<Scheduled> scheduled = new ArrayList<>();
     private final List<GravelTower> gravelTowers = new ArrayList<>();
     private final List<java.util.function.BooleanSupplier> buildJobs = new ArrayList<>();
@@ -186,21 +187,12 @@ public final class GameManager {
     }
 
     public PlayerData data(ServerPlayer player) {
-        PlayerData d = playerData.computeIfAbsent(player.getUUID(), uuid -> {
+        playerNames.put(player.getUUID(), player.getScoreboardName());
+        return playerData.computeIfAbsent(player.getUUID(), uuid -> {
             PlayerData data = new PlayerData(uuid);
             data.wins = winsStore.get(uuid); // seed lifetime wins from disk
             return data;
         });
-        String currentName = player.getScoreboardName();
-        if (!currentName.equals(d.name)) {
-            // Name changed (or first join): drop the stale scoreboard entry so the
-            // old username doesn't linger as a ghost row.
-            if (d.name != null) {
-                scoreboard.clearNamedScore(d.name);
-            }
-            d.name = currentName;
-        }
-        return d;
     }
 
     /** True when the game language is Chinese ({@code Lang Core} 2). */
@@ -1114,8 +1106,9 @@ public final class GameManager {
         scoreboard.updateLives(participants, p -> data(p).lives);
         for (Map.Entry<UUID, PlayerData> e : playerData.entrySet()) {
             PlayerData d = e.getValue();
-            if (!online.contains(e.getKey()) && (d.playing || d.eliminated) && d.lives > 0 && d.name != null) {
-                scoreboard.updateLivesForName(d.name, d.lives);
+            String name = playerNames.get(e.getKey());
+            if (name != null && !online.contains(e.getKey()) && (d.playing || d.eliminated) && d.lives > 0) {
+                scoreboard.updateLivesForName(name, d.lives);
             }
         }
     }
@@ -1133,8 +1126,9 @@ public final class GameManager {
         scoreboard.updateWins(server.getPlayerList().getPlayers(), p -> data(p).wins);
         for (Map.Entry<UUID, PlayerData> e : playerData.entrySet()) {
             PlayerData d = e.getValue();
-            if (!online.contains(e.getKey()) && d.name != null) {
-                scoreboard.updateWinsForName(d.name, d.wins);
+            String name = playerNames.get(e.getKey());
+            if (name != null && !online.contains(e.getKey())) {
+                scoreboard.updateWinsForName(name, d.wins);
             }
         }
     }

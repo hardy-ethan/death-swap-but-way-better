@@ -17,9 +17,6 @@ public final class PlayerData {
 
     public final UUID uuid;
 
-    /** Scoreboard name (username) — set once when the player first joins this session. */
-    public String name;
-
     /** Lives remaining this game. 0 == eliminated. */
     public int lives;
 

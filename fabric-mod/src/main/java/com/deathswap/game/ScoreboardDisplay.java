@@ -100,21 +100,6 @@ final class ScoreboardDisplay {
         }
     }
 
-    /** Remove all scoreboard entries for a player name (e.g. after a username change). */
-    void clearNamedScore(String name) {
-        if (server == null) {
-            return;
-        }
-        Scoreboard board = server.getScoreboard();
-        ScoreHolder holder = ScoreHolder.forNameOnly(name);
-        for (String objName : new String[]{LIVES_OBJECTIVE, WINS_OBJECTIVE}) {
-            Objective obj = board.getObjective(objName);
-            if (obj != null) {
-                board.resetSinglePlayerScore(holder, obj);
-            }
-        }
-    }
-
     /** Set the lives score for an offline player by name. */
     void updateLivesForName(String name, int lives) {
         if (server == null) {
