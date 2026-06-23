@@ -49,6 +49,9 @@ import net.minecraft.tags.BiomeTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.core.QuartPos;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.network.protocol.game.ClientboundLevelChunkWithLightPacket;
 import net.minecraft.world.level.block.entity.BlockEntityTypes;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.Structure;
@@ -650,6 +653,49 @@ public final class Mc {
     public static BlockState flowingWater(int level) {
         return Blocks.WATER.defaultBlockState()
                 .setValue(net.minecraft.world.level.block.LiquidBlock.LEVEL, level);
+    }
+
+    /**
+     * Repaint every noise cell (4×4×4 block resolution) overlapping the
+     * inclusive block box to {@code biome}, then push a full chunk refresh to
+     * all players tracking the affected chunks so the new water colour is
+     * visible immediately. Mirrors what {@code /fillbiome} does internally.
+     */
+    public static void fillBiome(ServerLevel level, BlockPos from, BlockPos to, Identifier biome) {
+        java.util.Optional<Holder.Reference<Biome>> opt = level.registryAccess()
+                .lookupOrThrow(Registries.BIOME)
+                .get(biome);
+        if (opt.isEmpty()) return;
+        Holder<Biome> holder = opt.get();
+
+        int qx0 = QuartPos.fromBlock(Math.min(from.getX(), to.getX()));
+        int qy0 = QuartPos.fromBlock(Math.min(from.getY(), to.getY()));
+        int qz0 = QuartPos.fromBlock(Math.min(from.getZ(), to.getZ()));
+        int qx1 = QuartPos.fromBlock(Math.max(from.getX(), to.getX()));
+        int qy1 = QuartPos.fromBlock(Math.max(from.getY(), to.getY()));
+        int qz1 = QuartPos.fromBlock(Math.max(from.getZ(), to.getZ()));
+
+        java.util.Set<LevelChunk> dirty = new java.util.LinkedHashSet<>();
+        for (int qx = qx0; qx <= qx1; qx++) {
+            for (int qz = qz0; qz <= qz1; qz++) {
+                LevelChunk chunk = (LevelChunk) level.getChunk(
+                        QuartPos.toSection(qx), QuartPos.toSection(qz));
+                for (int qy = qy0; qy <= qy1; qy++) {
+                    int si = chunk.getSectionIndexFromSectionY(QuartPos.toSection(qy));
+                    if (si < 0 || si >= chunk.getSectionsCount()) continue;
+                    ((net.minecraft.world.level.chunk.PalettedContainer<Holder<Biome>>)
+                            chunk.getSection(si).getBiomes()).getAndSetUnchecked(
+                            qx & 3, qy & 3, qz & 3, holder);
+                }
+                chunk.markUnsaved();
+                dirty.add(chunk);
+            }
+        }
+        dirty.forEach(chunk ->
+                level.getChunkSource().chunkMap.getPlayers(chunk.getPos(), false)
+                        .forEach(p -> p.connection.send(
+                                new ClientboundLevelChunkWithLightPacket(
+                                        chunk, level.getLightEngine(), null, null))));
     }
 
     public static BlockState netherPortal(Direction.Axis axis) {

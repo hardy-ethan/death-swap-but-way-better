@@ -5,6 +5,7 @@
 	"mixins": [
 		"AbstractContainerMenuMixin",
 		"ChatCommandThrottleMixin",
+		"FlowingFluidMixin",
 		"LevelSetBlockMixin",
 		"PlayerDropMixin",
 		"ScatteredFeaturePieceAccessor",
