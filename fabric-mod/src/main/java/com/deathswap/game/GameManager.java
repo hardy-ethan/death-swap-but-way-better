@@ -85,6 +85,7 @@ public final class GameManager {
     private final WinsStore winsStore = new WinsStore();
     private final ItemManager items;
     private final Map<UUID, PlayerData> playerData = new HashMap<>();
+    private final Map<UUID, String> playerNames = new HashMap<>();
     private final List<Scheduled> scheduled = new ArrayList<>();
     private final List<GravelTower> gravelTowers = new ArrayList<>();
     private final List<java.util.function.BooleanSupplier> buildJobs = new ArrayList<>();
@@ -186,6 +187,7 @@ public final class GameManager {
     }
 
     public PlayerData data(ServerPlayer player) {
+        playerNames.put(player.getUUID(), player.getScoreboardName());
         return playerData.computeIfAbsent(player.getUUID(), uuid -> {
             PlayerData data = new PlayerData(uuid);
             data.wins = winsStore.get(uuid); // seed lifetime wins from disk
@@ -233,13 +235,8 @@ public final class GameManager {
     }
 
     public void onPlayerLeave(ServerPlayer player) {
-        // Keep their PlayerData so wins persist if they reconnect this session.
         if (phase == GamePhase.RUNNING) {
-            scoreboard.removePlayer(player);
             checkWinCondition();
-        } else {
-            // In the hub, drop their row from the wins HUD as they leave.
-            scoreboard.removePlayer(player);
         }
         // A player just left: start the empty-server idle clock. The timer
         // re-checks that the server is actually empty (and in the hub) before it
@@ -1092,28 +1089,48 @@ public final class GameManager {
     // ---- helpers ----
 
     /**
-     * Refresh the lives sidebar. Shows every player taking part in the current
-     * game — those still alive and those already eliminated (at 0 lives) — but
-     * not late-joining spectators.
+     * Refresh the lives sidebar. Shows every participant — those still alive
+     * and eliminated ones at 0 lives — including offline players who still have
+     * lives remaining.
      */
     private void updateSidebar() {
         List<ServerPlayer> participants = new ArrayList<>();
+        java.util.Set<UUID> online = new java.util.HashSet<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             PlayerData data = data(player);
             if (data.playing || data.eliminated) {
                 participants.add(player);
+                online.add(player.getUUID());
             }
         }
         scoreboard.updateLives(participants, p -> data(p).lives);
+        for (Map.Entry<UUID, PlayerData> e : playerData.entrySet()) {
+            PlayerData d = e.getValue();
+            String name = playerNames.get(e.getKey());
+            if (name != null && !online.contains(e.getKey()) && (d.playing || d.eliminated) && d.lives > 0) {
+                scoreboard.updateLivesForName(name, d.lives);
+            }
+        }
     }
 
     /**
-     * Refresh the hub's wins HUD (sidebar + below-name) with every online
-     * player's lifetime win count. Only meaningful while in the hub, where the
-     * wins objectives are the displayed ones.
+     * Refresh the hub's wins HUD (sidebar + below-name) with every player's
+     * lifetime win count — including those who have since disconnected. Only
+     * meaningful while in the hub, where the wins objectives are displayed.
      */
     private void updateHubScoreboard() {
+        java.util.Set<UUID> online = new java.util.HashSet<>();
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            online.add(p.getUUID());
+        }
         scoreboard.updateWins(server.getPlayerList().getPlayers(), p -> data(p).wins);
+        for (Map.Entry<UUID, PlayerData> e : playerData.entrySet()) {
+            PlayerData d = e.getValue();
+            String name = playerNames.get(e.getKey());
+            if (name != null && !online.contains(e.getKey())) {
+                scoreboard.updateWinsForName(name, d.wins);
+            }
+        }
     }
 
     /**
