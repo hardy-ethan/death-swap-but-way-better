@@ -56,7 +56,7 @@ public final class DeathSwapCommands {
                         }))
                 .then(Commands.literal("pause")
                         .executes(ctx -> {
-                            if (!game.pauseGame()) {
+                            if (!game.pauseGame(ctx.getSource().getTextName())) {
                                 ctx.getSource().sendFailure(Component.literal(game.isPaused()
                                         ? "The game is already paused."
                                         : "No running game to pause."));

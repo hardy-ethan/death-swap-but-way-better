@@ -105,6 +105,8 @@ public final class GameManager {
     private boolean paused;
     /** Real-time ticks elapsed since the current pause began, for the on-screen clock. */
     private int pausedTicks;
+    /** Display name of whoever ran /deathswap pause, shown on the overlay. */
+    private String pausedByName = "";
     /** Where each alive player stood when the pause began, so they're held in place. */
     private final Map<UUID, Vec3> pausePositions = new HashMap<>();
     /** Pre-game freeze countdown; while > 0 players are blinded and held in place. */
@@ -633,19 +635,20 @@ public final class GameManager {
      * <p>Only valid for a running game; refused from the hub/ending or when already
      * paused. Returns true on success.
      */
-    public boolean pauseGame() {
+    public boolean pauseGame(String pauserName) {
         if (phase != GamePhase.RUNNING || paused) {
             return false;
         }
         paused = true;
         pausedTicks = 0;
+        pausedByName = pauserName;
         server.tickRateManager().setFrozen(true);
         // Snapshot where everyone is standing so tickPaused() can hold them there.
         pausePositions.clear();
         for (ServerPlayer player : alivePlayers()) {
             pausePositions.put(player.getUUID(), player.position());
         }
-        broadcast(">> Game paused by an operator. <<", ChatFormatting.YELLOW);
+        broadcast(">> Game paused by " + pauserName + ". <<", ChatFormatting.YELLOW);
         showPauseOverlay();
         return true;
     }
@@ -697,9 +700,9 @@ public final class GameManager {
         // }
     }
 
-    /** Show the centered "PAUSED m:ss" title to everyone online. */
+    /** Show the centered "Paused by <name> - m:ss" title to everyone online. */
     private void showPauseOverlay() {
-        Component title = Component.literal("PAUSED " + formatClock(pausedTicks / 20))
+        Component title = Component.literal("Paused by " + pausedByName + " - " + formatClock(pausedTicks / 20))
                 .withStyle(ChatFormatting.RED);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             // Long stay so the title persists between the per-second refreshes.
