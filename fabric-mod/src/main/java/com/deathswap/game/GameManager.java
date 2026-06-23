@@ -186,12 +186,21 @@ public final class GameManager {
     }
 
     public PlayerData data(ServerPlayer player) {
-        return playerData.computeIfAbsent(player.getUUID(), uuid -> {
+        PlayerData d = playerData.computeIfAbsent(player.getUUID(), uuid -> {
             PlayerData data = new PlayerData(uuid);
             data.wins = winsStore.get(uuid); // seed lifetime wins from disk
-            data.name = player.getScoreboardName();
             return data;
         });
+        String currentName = player.getScoreboardName();
+        if (!currentName.equals(d.name)) {
+            // Name changed (or first join): drop the stale scoreboard entry so the
+            // old username doesn't linger as a ghost row.
+            if (d.name != null) {
+                scoreboard.clearNamedScore(d.name);
+            }
+            d.name = currentName;
+        }
+        return d;
     }
 
     /** True when the game language is Chinese ({@code Lang Core} 2). */
