@@ -238,15 +238,22 @@ public final class GameManager {
         if (existing != null && (existing.playing || existing.eliminated)) {
             // Reconnecting participant: drop them straight back into the game if they
             // were still alive, otherwise keep them spectating as they already were.
-            player.setGameMode(existing.playing && !existing.eliminated
-                    ? GameType.SURVIVAL
-                    : GameType.SPECTATOR);
+            boolean isSpec = !(existing.playing && !existing.eliminated);
+            player.setGameMode(isSpec ? GameType.SPECTATOR : GameType.SURVIVAL);
+            if (isSpec) {
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                        MobEffects.NIGHT_VISION, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION,
+                        254, false, false, true));
+            }
             return;
         }
         // Genuine late joiner: spectate the ongoing game (extra/make_newbie_spec.mcfunction).
         PlayerData data = data(player);
         data.playing = false;
         player.setGameMode(GameType.SPECTATOR);
+        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                MobEffects.NIGHT_VISION, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION,
+                254, false, false, true));
         broadcast(Messages.joinedMidGame(zh(), player.getDisplayName()));
         Mc.titleRaw(player, Messages.spectateTitle(zh()), Messages.spectateSubtitle(zh()));
     }
@@ -1043,6 +1050,9 @@ public final class GameManager {
         data.clearOffer();
         effects.clearAll(player);
         player.setGameMode(GameType.SPECTATOR);
+        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                MobEffects.NIGHT_VISION, net.minecraft.world.effect.MobEffectInstance.INFINITE_DURATION,
+                254, false, false, true));
         // player_eliminated.mcfunction: dragon growl (volume 9, pitch 1.2) and the
         // ">> ELIMINATED! <<" subtitle (the "YOU DIED" title from player_died stays).
         Mc.playSound(player, SoundEvents.ENDER_DRAGON_GROWL, 9.0f, 1.2f);
