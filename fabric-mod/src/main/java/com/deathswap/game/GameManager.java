@@ -1260,11 +1260,23 @@ public final class GameManager {
             online.add(p.getUUID());
         }
         scoreboard.updateWins(server.getPlayerList().getPlayers(), p -> data(p).wins);
+        // Players who joined this session but are now offline.
         for (Map.Entry<UUID, PlayerData> e : playerData.entrySet()) {
             PlayerData d = e.getValue();
             String name = playerNames.get(e.getKey());
             if (name != null && !online.contains(e.getKey())) {
                 scoreboard.updateWinsForName(name, d.wins);
+            }
+        }
+        // Players with persisted wins who haven't joined this session yet — look
+        // up their name from the server's user name cache.
+        net.minecraft.server.players.UserNameToIdResolver nameCache =
+                server.services().nameToIdCache();
+        for (Map.Entry<UUID, Integer> e : winsStore.getAll().entrySet()) {
+            UUID uuid = e.getKey();
+            if (!online.contains(uuid) && !playerData.containsKey(uuid)) {
+                nameCache.get(uuid).ifPresent(nameAndId ->
+                        scoreboard.updateWinsForName(nameAndId.name(), e.getValue()));
             }
         }
     }

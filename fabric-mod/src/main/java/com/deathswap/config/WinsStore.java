@@ -9,6 +9,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -54,6 +55,11 @@ public final class WinsStore {
     /** This player's recorded win count, or 0 if they have never won. */
     public int get(UUID uuid) {
         return wins.getOrDefault(uuid, 0);
+    }
+
+    /** All recorded win tallies, keyed by player UUID. */
+    public Map<UUID, Integer> getAll() {
+        return Collections.unmodifiableMap(wins);
     }
 
     /** Record a player's new win count and write the file back to disk. */
