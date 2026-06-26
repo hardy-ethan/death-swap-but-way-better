@@ -30,7 +30,10 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.tags.FluidTags;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.network.protocol.game.ClientboundTabListPacket;
 import net.minecraft.network.protocol.game.ClientboundUpdateMobEffectPacket;
@@ -1004,8 +1007,9 @@ public final class GameManager {
         // than letting it run, so teleport them there ourselves.
         PlayerData data = data(player);
         if (data.spawnPos != null) {
+            BlockPos safeSpawn = findSafeRespawnPos(server.overworld(), data.spawnPos);
             Mc.teleportTo(player, server.overworld(),
-                    data.spawnPos.getX() + 0.5, data.spawnPos.getY(), data.spawnPos.getZ() + 0.5,
+                    safeSpawn.getX() + 0.5, safeSpawn.getY(), safeSpawn.getZ() + 0.5,
                     data.spawnYaw, player.getXRot());
         }
         // player_died.mcfunction: effect give @s minecraft:resistance 10 5.
@@ -1126,8 +1130,9 @@ public final class GameManager {
             target.getFoodData().setSaturation(5.0f);
             // Return them to their initial spread spawn, same as a normal death.
             if (data.spawnPos != null) {
+                BlockPos safeSpawn = findSafeRespawnPos(server.overworld(), data.spawnPos);
                 Mc.teleportTo(target, server.overworld(),
-                        data.spawnPos.getX() + 0.5, data.spawnPos.getY(), data.spawnPos.getZ() + 0.5,
+                        safeSpawn.getX() + 0.5, safeSpawn.getY(), safeSpawn.getZ() + 0.5,
                         data.spawnYaw, target.getXRot());
             }
         }
@@ -1397,6 +1402,76 @@ public final class GameManager {
         level.getChunk(x >> 4, z >> 4);
         int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
         return new net.minecraft.core.BlockPos(x, y, z);
+    }
+
+    /**
+     * Returns the closest safe position to {@code original} where the player won't
+     * spawn in lava/fire or within 20 blocks of a ravager, warden, enderman, or
+     * named parched (Viet Cong). Searches outward in a 16-block radius; falls back
+     * to the original if nothing safe is found nearby.
+     */
+    private BlockPos findSafeRespawnPos(ServerLevel level, BlockPos original) {
+        // Collect dangerous mobs once — any mob that could be within 20 blocks of a
+        // candidate (up to 64 blocks away) lies within 84 blocks of the original.
+        double collectRadius = 84;
+        AABB searchBox = new AABB(
+                original.getX() - collectRadius, original.getY() - collectRadius, original.getZ() - collectRadius,
+                original.getX() + collectRadius, original.getY() + collectRadius, original.getZ() + collectRadius);
+        List<Vec3> dangerMobs = level
+                .getEntitiesOfClass(net.minecraft.world.entity.Mob.class, searchBox, this::isDangerousMob)
+                .stream().map(net.minecraft.world.entity.Entity::position).toList();
+
+        if (isSafeSpawnPos(level, original, dangerMobs)) {
+            return original;
+        }
+        for (int radius = 1; radius <= 64; radius++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    if (Math.abs(dx) != radius && Math.abs(dz) != radius) continue;
+                    int x = original.getX() + dx;
+                    int z = original.getZ() + dz;
+                    int surfaceY = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                    BlockPos candidate = new BlockPos(x, surfaceY, z);
+                    if (isSafeSpawnPos(level, candidate, dangerMobs)) {
+                        return candidate;
+                    }
+                }
+            }
+        }
+        return original;
+    }
+
+    private boolean isSafeSpawnPos(ServerLevel level, BlockPos feet, List<Vec3> dangerMobs) {
+        for (int dx = -4; dx <= 4; dx++) {
+            for (int dz = -4; dz <= 4; dz++) {
+                for (int dy = -1; dy <= 2; dy++) {
+                    if (isHazardousBlock(level, feet.offset(dx, dy, dz))) return false;
+                }
+            }
+        }
+        Vec3 center = Vec3.atCenterOf(feet);
+        for (Vec3 mob : dangerMobs) {
+            if (mob.distanceTo(center) <= 20) return false;
+        }
+        return true;
+    }
+
+    private boolean isDangerousMob(net.minecraft.world.entity.Mob mob) {
+        var type = mob.getType();
+        if (type == EntityTypes.RAVAGER) return true;
+        if (type == EntityTypes.WARDEN) return true;
+        if (type == EntityTypes.ENDERMAN) return true;
+        // Named parched = Viet Cong; random parched are not dangerous
+        if (type == EntityTypes.PARCHED && mob.hasCustomName()) return true;
+        return false;
+    }
+
+    private boolean isHazardousBlock(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return state.is(Blocks.LAVA)
+                || state.is(Blocks.FIRE)
+                || state.is(Blocks.SOUL_FIRE)
+                || level.getFluidState(pos).is(FluidTags.LAVA);
     }
 
     private void giveStarterKit(ServerPlayer player) {
