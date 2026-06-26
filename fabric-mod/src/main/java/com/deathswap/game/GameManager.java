@@ -981,16 +981,29 @@ public final class GameManager {
      * so a death/relog that wiped their inventory doesn't leave them defenseless.
      * In hub phase, restore the full hub loadout (mace + wind charges).
      */
-    public void onPlayerRespawn(ServerPlayer player) {
+    public void onPlayerRespawn(ServerPlayer player, boolean alive) {
         if (phase == GamePhase.HUB) {
             sendToHub(player);
             return;
         }
-        if (phase != GamePhase.RUNNING || !settings.startWithBasicTools) {
+        if (phase != GamePhase.RUNNING) {
             return;
         }
         PlayerData data = data(player);
-        if (data.playing && !data.eliminated && player.getInventory().isEmpty()) {
+        if (!data.playing || data.eliminated) {
+            return;
+        }
+        // Player was dead when the game started: the teleport in spreadFarAway
+        // silently fails on a dead player, so finish it now on respawn.
+        if (!alive && data.spawnPos != null) {
+            Mc.teleportTo(player, server.overworld(),
+                    data.spawnPos.getX() + 0.5, data.spawnPos.getY(), data.spawnPos.getZ() + 0.5,
+                    data.spawnYaw, player.getXRot());
+            if (freezeTicksRemaining > 0) {
+                Mc.effect(player, MobEffects.BLINDNESS, freezeTicksRemaining / 20, 0);
+            }
+        }
+        if (settings.startWithBasicTools && player.getInventory().isEmpty()) {
             giveStarterKit(player);
         }
     }

@@ -75,7 +75,7 @@ public final class DeathSwapMod implements ModInitializer {
 
         // Re-give the starter kit if a player respawns with an empty inventory.
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) ->
-                GAME.onPlayerRespawn(newPlayer));
+                GAME.onPlayerRespawn(newPlayer, alive));
 
         // While the game is paused, freeze all damage to living entities.
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> !GAME.isPaused());
