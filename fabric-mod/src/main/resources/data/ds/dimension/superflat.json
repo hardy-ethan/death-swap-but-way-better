@@ -1,0 +1,32 @@
+{
+  "type": "ds:type_superflat",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "minecraft:plains",
+      "lakes": false,
+      "features": false,
+      "layers": [
+        {
+          "height": 1,
+          "block": "minecraft:bedrock"
+        },
+        {
+          "height": 2,
+          "block": "minecraft:stone"
+        },
+        {
+          "height": 3,
+          "block": "minecraft:stone"
+        },
+        {
+          "height": 4,
+          "block": "minecraft:grass_block"
+        }
+      ],
+      "structure_overrides": [
+        "minecraft:villages"
+      ]
+    }
+  }
+}
