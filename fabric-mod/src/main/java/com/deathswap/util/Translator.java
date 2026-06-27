@@ -176,7 +176,7 @@ public final class Translator {
             Map.entry(" (Map version 1.0.3)", " (地图版本 1.0.3)"),
             Map.entry("Additional datapack work by TheWorfer27 and Melumi11", "额外数据包制作: TheWorfer27 和 Melumi11"),
             Map.entry(">> Spreading players... <<", ">> 球员搬迁... <<"),
-            Map.entry(" > DIED! Lost a life!", " > 死亡了! 失去一条生命!"),
+            Map.entry(" > Lost a life!", " > 失去一条生命!"),
             Map.entry(">> YOU DIED! <<", ">> 你死了! <<"),
             Map.entry("-1 Life!", "-1 生命!"),
             Map.entry(">> ELIMINATED! <<", ">> 被淘汰! <<"),
