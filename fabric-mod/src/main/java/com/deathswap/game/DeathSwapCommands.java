@@ -51,7 +51,7 @@ public final class DeathSwapCommands {
                 .then(Commands.literal("stop")
                         .executes(ctx -> {
                             game.broadcast(">> Game stopped by an operator. <<", ChatFormatting.RED);
-                            game.forceReturnToHub();
+                            game.enterHub();
                             return 1;
                         }))
                 .then(Commands.literal("pause")
