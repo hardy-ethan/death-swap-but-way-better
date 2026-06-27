@@ -1,6 +1,6 @@
 # [=-=-=-=-=-= Death Swap But Way Better =-=-=-=-=-=]
 
-[ 这款游戏支持中文游玩 / This map is available in Chinese! ]
+[ Dit spel ondersteunt Nederlands spelen / This map is available in Dutch! ]
 
 Tired of the same old boring Minecraft Death Swap? We get it. That's why we decided to make Minecraft Death Swap... *Way Better*.
 

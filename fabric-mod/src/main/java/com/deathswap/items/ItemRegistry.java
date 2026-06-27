@@ -99,13 +99,13 @@ public final class ItemRegistry {
         // getName(), which can render blank. Show the target whenever one is given
         // — even when it's the user themselves — so the log never drops the "who".
         String who = target == null ? "" : " " + target.getScoreboardName();
-        String localized = Translator.translate(game.settings().isChinese(), verb);
+        String localized = Translator.translate(game.settings().isDutch(), verb);
         game.broadcast(">> " + self.getScoreboardName() + " --> " + localized + who, color);
     }
 
     /** Localize an in-game effect string for the current game language. */
     private static String translate(ItemContext ctx, String en) {
-        return Translator.translate(ctx.game().settings().isChinese(), en);
+        return Translator.translate(ctx.game().settings().isDutch(), en);
     }
 
     /** Origin block for relative fills/builds (the executing player's feet). */
@@ -498,14 +498,14 @@ public final class ItemRegistry {
                     inv.setItem(6, kept[0]);
                     inv.setItem(7, kept[1]);
                     inv.setItem(8, kept[2]);
-                    boolean zh = ctx.game().settings().isChinese();
+                    boolean nl = ctx.game().settings().isDutch();
                     Mc.title(victim, " ", self.getScoreboardName()
-                                    + Translator.translate(zh, " cleared your inventory!"),
+                                    + Translator.translate(nl, " cleared your inventory!"),
                             ChatFormatting.WHITE, ChatFormatting.RED);
                     // Always name the unlucky player explicitly (it can be the user).
                     ctx.game().broadcast(">> " + self.getScoreboardName()
-                            + Translator.translate(zh, " --> Cleared ") + victim.getScoreboardName()
-                            + Translator.translate(zh, "'s inventory! (randomly chosen)"), ChatFormatting.RED);
+                            + Translator.translate(nl, " --> Cleared ") + victim.getScoreboardName()
+                            + Translator.translate(nl, "'s inventory! (randomly chosen)"), ChatFormatting.RED);
                 }).build());
 
         add(DeathSwapItem.of(25, GRAY, ChatFormatting.WHITE,
@@ -892,11 +892,11 @@ public final class ItemRegistry {
                     // Datapack 56b warns the target immediately (the round-robin "** Items
                     // blocked!" only fires on their item turn, which felt like nothing
                     // happened), so confirm the block right away.
-                    boolean zhBlocked = ctx.game().settings().isChinese();
+                    boolean nlBlocked = ctx.game().settings().isDutch();
                     Mc.msg(t, Component.literal(
-                            Translator.translate(zhBlocked, ">>> IMPORTANT: You can't use ANY items for 3 minutes because ")
+                            Translator.translate(nlBlocked, ">>> IMPORTANT: You can't use ANY items for 3 minutes because ")
                             + self.getScoreboardName()
-                            + Translator.translate(zhBlocked, " used an item on you! <<<"))
+                            + Translator.translate(nlBlocked, " used an item on you! <<<"))
                             .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true)));
                     announce(ctx.game(), self, "Blocked item usage for", t, ChatFormatting.AQUA);
                 }).build());
@@ -1128,12 +1128,12 @@ public final class ItemRegistry {
                 }).build());
 
         add(DeathSwapItem.of(72, LIME, ChatFormatting.LIGHT_PURPLE,
-                "Switch game's language to Chinese 中文", "For the culture!!!")
+                "Switch game's language to Dutch Nederlands", "For the culture!!!")
                 .effect((ctx, self, t) -> {
                     ctx.game().toggleLanguage();
                     // use/72a.mcfunction: a per-using-player broadcast after the switch.
                     ctx.game().broadcast(com.deathswap.game.Messages.langSwitched(
-                            ctx.game().settings().isChinese(), self.getDisplayName()));
+                            ctx.game().settings().isDutch(), self.getDisplayName()));
                 }).build());
 
         add(DeathSwapItem.of(73, GRAY, ChatFormatting.WHITE,

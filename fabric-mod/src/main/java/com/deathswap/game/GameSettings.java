@@ -27,7 +27,7 @@ public final class GameSettings {
     }
 
     public enum Language {
-        ENGLISH, CHINESE
+        ENGLISH, DUTCH
     }
 
     /** Lives each player starts with (datapack supports 1, 3, 5; we allow 1..6). */
@@ -57,8 +57,8 @@ public final class GameSettings {
 
     public Language language = Language.ENGLISH;
 
-    public boolean isChinese() {
-        return language == Language.CHINESE;
+    public boolean isDutch() {
+        return language == Language.DUTCH;
     }
 
     /**
