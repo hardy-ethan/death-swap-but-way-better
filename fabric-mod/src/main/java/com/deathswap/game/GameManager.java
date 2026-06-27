@@ -218,17 +218,15 @@ public final class GameManager {
     }
 
     /**
-     * Advance the state machine to {@code next}.  Warns if the edge is not in
-     * {@link #VALID_TRANSITIONS} (a bug), but always sets the phase so a bad
-     * transition doesn't leave the game stuck.
+     * Advance the state machine to {@code next}.  Crashes the server on an
+     * illegal edge — a bug that must never reach production.
      */
     private void transitionTo(GamePhase next) {
         java.util.EnumSet<GamePhase> allowed = VALID_TRANSITIONS.get(phase);
         if (allowed == null || !allowed.contains(next)) {
-            DeathSwapMod.LOGGER.warn("Unexpected phase transition: {} → {}", phase, next);
-        } else {
-            DeathSwapMod.LOGGER.info("Phase: {} → {}", phase, next);
+            throw new IllegalStateException("Illegal phase transition: " + phase + " → " + next);
         }
+        DeathSwapMod.LOGGER.info("Phase: {} → {}", phase, next);
         phase = next;
     }
 
