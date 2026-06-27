@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "deathswap",
+	"version": "${version}",
+	"name": "Death Swap But Way Better",
+	"description": "A Java reimplementation of the 'Death Swap But Way Better' datapack as a Fabric mod. Players swap positions every few minutes and use ridiculously powerful items to take each other out. Last player standing wins.",
+	"authors": [
+		"Jerries",
+		"TheWorfer27",
+		"Melumi11"
+	],
+	"contact": {
+		"homepage": "https://github.com/hardy-ethan/death-swap-but-way-better",
+		"sources": "https://github.com/hardy-ethan/death-swap-but-way-better"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/deathswap/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.deathswap.DeathSwapMod"
+		]
+	},
+	"mixins": [
+		"deathswap.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"lithium": "*",
+		"c2me": "*",
+		"ferritecore": "*"
+	}
+}
