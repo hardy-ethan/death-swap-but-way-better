@@ -1081,7 +1081,7 @@ public final class GameManager {
         } else {
             broadcast(">> The game ended in a draw. <<", ChatFormatting.YELLOW);
         }
-        broadcast(">> Game lasted " + formatClock(gameTicksElapsed / 20) + ". <<", ChatFormatting.GRAY);
+        broadcast(">> Game lasted " + formatClock(gameTicksElapsed / 20) + "! <<", ChatFormatting.GRAY);
     }
 
     /** Abort the current game (operator /deathswap stop) and reset to the lobby. */
