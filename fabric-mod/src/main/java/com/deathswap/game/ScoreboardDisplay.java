@@ -31,6 +31,21 @@ final class ScoreboardDisplay {
     private MinecraftServer server;
 
     /**
+     * Called once at server start. Creates the health objective and pins it to the
+     * tab-list column permanently — it is never removed or recreated as the game
+     * cycles through phases.
+     */
+    void init(MinecraftServer server, boolean zh) {
+        this.server = server;
+        Scoreboard board = server.getScoreboard();
+        Objective health = recreate(board, HEALTH_OBJECTIVE,
+                ObjectiveCriteria.HEALTH,
+                Component.literal(Translator.translate(zh, "Health")).withStyle(ChatFormatting.RED),
+                ObjectiveCriteria.RenderType.HEARTS);
+        board.setDisplayObjective(DisplaySlot.LIST, health);
+    }
+
+    /**
      * Hub HUD: show each player's lifetime win count both on the sidebar and
      * below their name above their head. Clears the running-game objectives so
      * only the wins tally is visible while idling in the lobby.
@@ -46,12 +61,6 @@ final class ScoreboardDisplay {
                 ObjectiveCriteria.RenderType.INTEGER);
         board.setDisplayObjective(DisplaySlot.SIDEBAR, wins);
         board.setDisplayObjective(DisplaySlot.BELOW_NAME, wins);
-
-        Objective health = recreate(board, HEALTH_OBJECTIVE,
-                ObjectiveCriteria.HEALTH,
-                Component.literal(Translator.translate(zh, "Health")).withStyle(ChatFormatting.RED),
-                ObjectiveCriteria.RenderType.HEARTS);
-        board.setDisplayObjective(DisplaySlot.LIST, health);
     }
 
     /** Push current win counts for every online player onto the hub HUD. */
@@ -82,12 +91,7 @@ final class ScoreboardDisplay {
                 Component.literal(Translator.translate(zh, "Lives")).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                 ObjectiveCriteria.RenderType.INTEGER);
         board.setDisplayObjective(DisplaySlot.SIDEBAR, lives);
-
-        Objective health = recreate(board, HEALTH_OBJECTIVE,
-                ObjectiveCriteria.HEALTH,
-                Component.literal(Translator.translate(zh, "Health")).withStyle(ChatFormatting.RED),
-                ObjectiveCriteria.RenderType.HEARTS);
-        board.setDisplayObjective(DisplaySlot.LIST, health);
+        // Health objective (LIST slot) was created once in init() and stays up permanently.
     }
 
     /** Push current life counts for every participant onto the sidebar. */

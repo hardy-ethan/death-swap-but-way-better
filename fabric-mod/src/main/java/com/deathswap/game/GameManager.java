@@ -157,6 +157,8 @@ public final class GameManager {
         applyGameRules();
         winsStore.load();
         items.registerAll();
+        // Create the permanent health objective (tab-list column) once at startup.
+        scoreboard.init(server, zh());
         // Stand up the hub's wins HUD now; per-player rows are pushed as people join.
         scoreboard.startHub(server, zh());
     }
