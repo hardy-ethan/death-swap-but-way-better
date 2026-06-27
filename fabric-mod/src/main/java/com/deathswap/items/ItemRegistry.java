@@ -1685,6 +1685,7 @@ public final class ItemRegistry {
                         if (zombie != null) {
                             zombie.setBaby(true);
                             zombie.setPersistenceRequired();
+                            zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
                             zombie.startRiding(chicken);
                         }
                     }
