@@ -22,24 +22,24 @@ final class ScoreboardDisplay {
 
     private MinecraftServer server;
 
-    void init(MinecraftServer server, boolean zh) {
+    void init(MinecraftServer server, boolean nl) {
         this.server = server;
         Scoreboard board = server.getScoreboard();
         Objective health = recreate(board, HEALTH_OBJECTIVE,
                 ObjectiveCriteria.HEALTH,
-                Component.literal(Translator.translate(zh, "Health")).withStyle(ChatFormatting.RED),
+                Component.literal(Translator.translate(nl, "Health")).withStyle(ChatFormatting.RED),
                 ObjectiveCriteria.RenderType.HEARTS);
         board.setDisplayObjective(DisplaySlot.LIST, health);
     }
 
-    void startHub(MinecraftServer server, boolean zh) {
+    void startHub(MinecraftServer server, boolean nl) {
         this.server = server;
         Scoreboard board = server.getScoreboard();
         remove(board, LIVES_OBJECTIVE);
 
         Objective wins = recreate(board, WINS_OBJECTIVE,
                 ObjectiveCriteria.DUMMY,
-                Component.literal(Translator.translate(zh, "Wins")).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+                Component.literal(Translator.translate(nl, "Wins")).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                 ObjectiveCriteria.RenderType.INTEGER);
         board.setDisplayObjective(DisplaySlot.SIDEBAR, wins);
         board.setDisplayObjective(DisplaySlot.BELOW_NAME, wins);
@@ -59,14 +59,14 @@ final class ScoreboardDisplay {
         }
     }
 
-    void start(MinecraftServer server, boolean zh) {
+    void start(MinecraftServer server, boolean nl) {
         this.server = server;
         Scoreboard board = server.getScoreboard();
         remove(board, WINS_OBJECTIVE);
 
         Objective lives = recreate(board, LIVES_OBJECTIVE,
                 ObjectiveCriteria.DUMMY,
-                Component.literal(Translator.translate(zh, "Lives")).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+                Component.literal(Translator.translate(nl, "Lives")).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                 ObjectiveCriteria.RenderType.INTEGER);
         board.setDisplayObjective(DisplaySlot.SIDEBAR, lives);
     }

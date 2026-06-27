@@ -75,7 +75,7 @@ public final class ItemManager {
         rotation = (rotation + 1) % alive.size();
         ServerPlayer player = alive.get(rotation);
         if (game.effects().hasEffect(player.getUUID(), "blockedItems")) {
-            Mc.msg(player, com.deathswap.game.Messages.itemsBlocked(game.settings().isChinese()));
+            Mc.msg(player, com.deathswap.game.Messages.itemsBlocked(game.settings().isDutch()));
             return;
         }
         offer(player);
@@ -94,9 +94,9 @@ public final class ItemManager {
         for (int i = 0; i < HOTBAR_SLOTS.length; i++) {
             player.getInventory().setItem(HOTBAR_SLOTS[i], buildDye(picks.get(i)));
         }
-        boolean zh = game.settings().isChinese();
-        Mc.titleRaw(player, Component.literal(" "), com.deathswap.game.Messages.newItemsSubtitle(zh));
-        Mc.msg(player, com.deathswap.game.Messages.newItemsChat(zh));
+        boolean nl = game.settings().isDutch();
+        Mc.titleRaw(player, Component.literal(" "), com.deathswap.game.Messages.newItemsSubtitle(nl));
+        Mc.msg(player, com.deathswap.game.Messages.newItemsChat(nl));
         Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
     }
 
@@ -143,7 +143,7 @@ public final class ItemManager {
     private ItemStack buildLockedFiller() {
         ItemStack stack = new ItemStack(Items.BARRIER);
         stack.set(DataComponents.CUSTOM_NAME,
-                Component.literal(Translator.translate(game.settings().isChinese(), "Powerup slot — items appear here"))
+                Component.literal(Translator.translate(game.settings().isDutch(), "Powerup slot — items appear here"))
                         .withStyle(ChatFormatting.DARK_GRAY).withStyle(s -> s.withItalic(false)));
         CompoundTag tag = new CompoundTag();
         tag.putBoolean(NBT_LOCKED, true);
@@ -167,10 +167,10 @@ public final class ItemManager {
         data.choosingItem = true;
         data.pendingTargetItem = null;
         player.getInventory().setItem(HOTBAR_SLOTS[0], buildDye(item));
-        boolean zh = game.settings().isChinese();
-        String name = Translator.translate(zh, item.name);
-        Mc.msg(player, Translator.translate(zh, "Given item #") + id + " (" + name
-                + Translator.translate(zh, ") -- drop it to use."),
+        boolean nl = game.settings().isDutch();
+        String name = Translator.translate(nl, item.name);
+        Mc.msg(player, Translator.translate(nl, "Given item #") + id + " (" + name
+                + Translator.translate(nl, ") -- drop it to use."),
                 ChatFormatting.GREEN);
         Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
         return true;
@@ -184,8 +184,8 @@ public final class ItemManager {
     /** Build the dyed display item exactly as the datapack's items/items/* do. */
     private ItemStack buildDye(DeathSwapItem item) {
         ItemStack stack = new ItemStack(Items.DYE.asList().get(item.dye.ordinal()));
-        // Show the Chinese name in Chinese mode (datapack ch_detect_item names).
-        String displayName = Translator.translate(game.settings().isChinese(), item.name);
+        // Show the Dutch name in Dutch mode (datapack ch_detect_item names).
+        String displayName = Translator.translate(game.settings().isDutch(), item.name);
         stack.set(DataComponents.CUSTOM_NAME,
                 Component.literal(displayName).withStyle(item.nameColor).withStyle(s -> s.withItalic(false)));
         stack.set(DataComponents.LORE, new ItemLore(List.of(
@@ -234,7 +234,7 @@ public final class ItemManager {
         if (game.effects().hasEffect(player.getUUID(), "blockedItems")) {
             clearOfferStacks(player);
             data.clearOffer();
-            Mc.msg(player, Translator.translate(game.settings().isChinese(),
+            Mc.msg(player, Translator.translate(game.settings().isDutch(),
                     "** You can't use items right now!"), ChatFormatting.RED);
             return true;
         }
@@ -259,7 +259,7 @@ public final class ItemManager {
                 if (victim != null) {
                     fire(item, player, victim);
                 } else {
-                    Mc.msg(player, Translator.translate(game.settings().isChinese(),
+                    Mc.msg(player, Translator.translate(game.settings().isDutch(),
                             ">> All opponents are shielded! Item had no effect. <<"), ChatFormatting.RED);
                 }
                 afterUse(player);
@@ -313,10 +313,10 @@ public final class ItemManager {
         PlayerData data = game.data(player);
         data.sendingTargetPrompt = true;
         try {
-            Mc.msg(player, Component.literal(Translator.translate(game.settings().isChinese(),
+            Mc.msg(player, Component.literal(Translator.translate(game.settings().isDutch(),
                     "\n>> Click on which player you want to use this item on: "))
                     .withStyle(ChatFormatting.YELLOW)
-                    .append(Component.literal(Translator.translate(game.settings().isChinese(), item.name))
+                    .append(Component.literal(Translator.translate(game.settings().isDutch(), item.name))
                             .withStyle(ChatFormatting.AQUA)));
 
             // Every alive player is listed by their permanent number (yourself
@@ -347,7 +347,7 @@ public final class ItemManager {
             Mc.msg(player, line);
             if (anyShielded) {
                 Mc.msg(player, shieldedNote.withStyle(ChatFormatting.ITALIC)
-                        .append(Component.literal(Translator.translate(game.settings().isChinese(),
+                        .append(Component.literal(Translator.translate(game.settings().isDutch(),
                                 " is/are shielded from items!")).withStyle(ChatFormatting.YELLOW)));
             }
         } finally {
@@ -370,7 +370,7 @@ public final class ItemManager {
                 && !target.getUUID().equals(player.getUUID())
                 && game.effects().hasEffect(target.getUUID(), "shield");
         if (target == null || shieldedOther) {
-            Mc.msg(player, Translator.translate(game.settings().isChinese(),
+            Mc.msg(player, Translator.translate(game.settings().isDutch(),
                     ">> That player can't be targeted. <<"), ChatFormatting.RED);
             return;
         }

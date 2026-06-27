@@ -12,7 +12,7 @@ The hub is three clusters in the overworld around the origin:
 |---|---|---|---|
 | `hub_lobby.nbt` | `-8 110 -8` → `8 117 8` | 17×8×17 | The player-facing lobby: circular `lime_terracotta` platform at y≈111, the clickable settings / JOIN / BEGIN wall-signs, birch start button at `0 112 7`. 29 signs. |
 | `hub_computer.nbt` | `-22 48 -34` → `22 57 21` | 45×10×56 | The underground "computer": the 44 redstone-triggered command blocks (start/winner/firework/crash/nuke logic), the duplicate settings sign panel (x18–20), and surrounding bedrock/stone. Mostly solid (it's underground). |
-| `hub_launchpad.nbt` | `-50 100 -34` → `-44 110 -22` | 7×11×13 | The spread / respawn-anchor pad at `-47,104,-32`: `redo_respawn_anchor` command blocks, light, the tp pad, and the two "If you did not get teleported away…" signs (EN + ZH). |
+| `hub_launchpad.nbt` | `-50 100 -34` → `-44 110 -22` | 7×11×13 | The spread / respawn-anchor pad at `-47,104,-32`: `redo_respawn_anchor` command blocks, light, the tp pad, and the two "If you did not get teleported away…" signs (EN + NL). |
 
 ## Key world anchors (from the datapack functions)
 
