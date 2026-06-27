@@ -83,6 +83,7 @@ public final class GameManager {
     private static final long IDLE_RESET_SECONDS = 5;
 
     private final GameSettings settings = new GameSettings();
+    private boolean languageToggledByItem = false;
     private final EffectManager effects = new EffectManager();
     private final ScoreboardDisplay scoreboard = new ScoreboardDisplay();
     /** Lifetime per-player win tallies, persisted across server restarts. */
@@ -212,9 +213,8 @@ public final class GameManager {
         });
     }
 
-    /** True when the game language is Chinese ({@code Lang Core} 2). */
     private boolean zh() {
-        return settings.isChinese();
+        return settings.isChinese() ^ languageToggledByItem;
     }
 
     public PlayerData dataIfPresent(UUID uuid) {
@@ -889,14 +889,9 @@ public final class GameManager {
         return time >= 13000 && time < 23000;
     }
 
-    /**
-     * Item 72: switch the game language between English and Chinese, reproducing
-     * the ds:settings/lang_chinese / lang_english confirmation (title, subtitle,
-     * ui.button.click sound, banner line and the Chinese translator note).
-     */
     public void toggleLanguage() {
-        boolean toChinese = settings.language == GameSettings.Language.ENGLISH;
-        settings.language = toChinese ? GameSettings.Language.CHINESE : GameSettings.Language.ENGLISH;
+        languageToggledByItem = !languageToggledByItem;
+        boolean toChinese = zh();
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             Mc.titleRaw(p, Messages.langTitle(toChinese), Messages.langSubtitle(toChinese));
             Mc.playSound(p, SoundEvents.UI_BUTTON_CLICK, 9.0f, 1.0f);
@@ -1199,6 +1194,7 @@ public final class GameManager {
         for (PlayerData d : playerData.values()) {
             d.resetForHub();
         }
+        languageToggledByItem = false;
         // Swap the game's lives/health HUD back to the hub's wins tally.
         scoreboard.startHub(server, zh());
         // Don't discard the cache: a destination is removed from it the moment it's
@@ -1206,9 +1202,6 @@ public final class GameManager {
         // to carry into the next game. The hub phase tops it back up from here.
         lastCacheReadyLogged = -1; // re-log current cache state as the hub resumes
         lastCachePendingLogged = -1;
-        // Language (item 72) is a per-game state, not a persistent setting: reset it
-        // so the next game starts in English unless item 72 is used again.
-        settings.language = GameSettings.Language.ENGLISH;
 
         Mc.runServer(server, "time set noon");
 
