@@ -1,1 +1,0 @@
-execute as @a[tag=Winner] at @s run summon firework_rocket ~ ~0.5 ~ {LifeTime:16,Tags:["ent"],FireworksItem:{id:"minecraft:firework_rocket",count:1,components:{"minecraft:fireworks":{explosions:[{shape:"star",has_twinkle:true,has_trail:true,colors:[I;2424626,2420991,2739252,2871039]}]}}}}

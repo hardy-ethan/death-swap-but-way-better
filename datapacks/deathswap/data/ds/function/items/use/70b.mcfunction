@@ -1,9 +1,0 @@
-$execute as @p[scores={permPNo=$(s)}] at @s run function ds:items/misc/tet_offensive {d:"{PersistenceRequired:1b,Tags:[\"ent\",\"viet_cong\"],CustomName:\"The Việt Cộng\",attributes:[{id:\"minecraft:attack_damage\",base:2}],equipment:{head:{id:\"minecraft:player_head\",count:1,components:{\"minecraft:profile\":{\"properties\":[{\"name\":\"textures\",\"value\":\"eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMWM4YjdjN2ZiMDhhYjg5NDc4MTJiYjlkMTRkYTA0OWVkMmQ1MWFkOGNiOTMyYjM5MmMyMjY2YjI1N2FkYzJhYyJ9fX0=\"}]},\"minecraft:custom_name\":{\"bold\":true,\"color\":\"gold\",\"italic\":true,\"text\":\"Vietnam Flag\"},\"minecraft:lore\":[{\"color\":\"gray\",\"italic\":true,\"text\":\"Custom Head ID: 35930\"},{\"color\":\"blue\",\"italic\":true,\"text\":\"www.minecraft-heads.com\"}]}}}}"}
-
-effect clear @a minecraft:night_vision
-
-$tellraw @a [{"text":">> ","color":"green"},{"selector":"@s","bold":false}," --> ",{"text":"Ambushed ","color":"green"},{"selector":"@p[scores={permPNo=$(s)}]","bold":false},{"text":" with a Viet Cong attack","color":"green"}]
-tellraw @a "Thanks Wall!"
-execute as @a at @s run playsound minecraft:entity.ghast.scream master @s ~ ~ ~ 9
-
-execute as @s run function ds:items/after_use

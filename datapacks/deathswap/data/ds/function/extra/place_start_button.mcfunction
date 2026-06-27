@@ -1,1 +1,0 @@
-setblock 0 112 7 minecraft:birch_button[facing=north]
