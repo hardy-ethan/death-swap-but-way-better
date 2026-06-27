@@ -39,7 +39,6 @@ final class ScoreboardDisplay {
         this.server = server;
         Scoreboard board = server.getScoreboard();
         remove(board, LIVES_OBJECTIVE);
-        remove(board, HEALTH_OBJECTIVE);
 
         Objective wins = recreate(board, WINS_OBJECTIVE,
                 ObjectiveCriteria.DUMMY,
@@ -47,6 +46,12 @@ final class ScoreboardDisplay {
                 ObjectiveCriteria.RenderType.INTEGER);
         board.setDisplayObjective(DisplaySlot.SIDEBAR, wins);
         board.setDisplayObjective(DisplaySlot.BELOW_NAME, wins);
+
+        Objective health = recreate(board, HEALTH_OBJECTIVE,
+                ObjectiveCriteria.HEALTH,
+                Component.literal(Translator.translate(zh, "Health")).withStyle(ChatFormatting.RED),
+                ObjectiveCriteria.RenderType.HEARTS);
+        board.setDisplayObjective(DisplaySlot.LIST, health);
     }
 
     /** Push current win counts for every online player onto the hub HUD. */
