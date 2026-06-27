@@ -1145,11 +1145,6 @@ public final class GameManager {
         broadcast(">> Game rolled back — a life was granted. <<", ChatFormatting.YELLOW);
     }
 
-    /** Abort the current game (operator /deathswap stop) and reset to the lobby. */
-    public void forceReturnToHub() {
-        enterHub();
-    }
-
     /**
      * Admin command: give one life to {@code target}, resurrecting
      * them if they were eliminated and rolling the game back from the ENDING phase
@@ -1214,7 +1209,7 @@ public final class GameManager {
     }
 
     /** RUNNING | ENDING → HUB: end the round and return all players to the lobby. */
-    private void enterHub() {
+    public void enterHub() {
         transitionTo(GamePhase.HUB);
         // Safety net: if the game is stopped while paused, lift the world freeze and
         // clear the overlay so the hub (and next game) runs normally.
