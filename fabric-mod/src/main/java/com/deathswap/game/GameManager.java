@@ -51,6 +51,27 @@ import java.util.UUID;
  */
 public final class GameManager {
 
+    /**
+     * Allowed phase transitions.  Every edge in the state machine must appear here;
+     * {@link #transitionTo} warns loudly if anything tries to cross an unlisted edge.
+     *
+     * <pre>
+     *   HUB ──(startGame)──▶ RUNNING
+     *   RUNNING ──(declareWinner)──▶ ENDING
+     *   RUNNING ──(forceReturnToHub)──▶ HUB
+     *   ENDING ──(addLife rollback)──▶ RUNNING
+     *   ENDING ──(timer / stop)──▶ HUB
+     * </pre>
+     */
+    private static final java.util.Map<GamePhase, java.util.EnumSet<GamePhase>> VALID_TRANSITIONS;
+    static {
+        var m = new java.util.EnumMap<GamePhase, java.util.EnumSet<GamePhase>>(GamePhase.class);
+        m.put(GamePhase.HUB,     java.util.EnumSet.of(GamePhase.RUNNING));
+        m.put(GamePhase.RUNNING, java.util.EnumSet.of(GamePhase.ENDING, GamePhase.HUB));
+        m.put(GamePhase.ENDING,  java.util.EnumSet.of(GamePhase.HUB,    GamePhase.RUNNING));
+        VALID_TRANSITIONS = java.util.Collections.unmodifiableMap(m);
+    }
+
     /** Minimum spread radius at game start (datapack uses 10,000). */
     private static final int SPREAD_MIN = 10_000;
     /**
@@ -152,7 +173,6 @@ public final class GameManager {
 
     public void onServerStarted(MinecraftServer server) {
         this.server = server;
-        this.phase = GamePhase.HUB;
         SettingsStore.load(settings);
         applyGameRules();
         resetAndFreezeTimeAndWeather();
@@ -195,6 +215,21 @@ public final class GameManager {
 
     public GamePhase phase() {
         return phase;
+    }
+
+    /**
+     * Advance the state machine to {@code next}.  Warns if the edge is not in
+     * {@link #VALID_TRANSITIONS} (a bug), but always sets the phase so a bad
+     * transition doesn't leave the game stuck.
+     */
+    private void transitionTo(GamePhase next) {
+        java.util.EnumSet<GamePhase> allowed = VALID_TRANSITIONS.get(phase);
+        if (allowed == null || !allowed.contains(next)) {
+            DeathSwapMod.LOGGER.warn("Unexpected phase transition: {} → {}", phase, next);
+        } else {
+            DeathSwapMod.LOGGER.info("Phase: {} → {}", phase, next);
+        }
+        phase = next;
     }
 
     /** True while the game is operator-paused (read by the damage event and mixins). */
@@ -776,7 +811,7 @@ public final class GameManager {
         // Assign permanent slot numbers after the per-player reset (which zeroes them).
         assignPermanentNumbers(participants);
 
-        phase = GamePhase.RUNNING;
+        transitionTo(GamePhase.RUNNING);
         gameTicksElapsed = 0;
         scoreboard.start(server, zh());
         updateSidebar();
@@ -1064,7 +1099,7 @@ public final class GameManager {
     }
 
     private void declareWinner(ServerPlayer winner) {
-        phase = GamePhase.ENDING;
+        transitionTo(GamePhase.ENDING);
         endingTicksRemaining = 20 * 10;
         if (winner != null) {
             PlayerData data = data(winner);
@@ -1119,7 +1154,7 @@ public final class GameManager {
         // elimination) caused the win condition to fire.
         if (phase == GamePhase.ENDING) {
             undoWinnerDeclaration();
-            phase = GamePhase.RUNNING;
+            transitionTo(GamePhase.RUNNING);
             broadcast(">> Game rolled back — a life was granted. <<", ChatFormatting.YELLOW);
         }
 
@@ -1168,7 +1203,7 @@ public final class GameManager {
     }
 
     private void returnEveryoneToHub() {
-        phase = GamePhase.HUB;
+        transitionTo(GamePhase.HUB);
         // Safety net: if the game is stopped while paused, lift the world freeze and
         // clear the overlay so the hub (and next game) runs normally.
         if (paused) {
