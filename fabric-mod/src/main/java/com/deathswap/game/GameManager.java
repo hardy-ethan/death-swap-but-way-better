@@ -157,7 +157,7 @@ public final class GameManager {
         applyGameRules();
         winsStore.load();
         items.registerAll();
-        // Stand up the hub's wins HUD now; per-player rows are pushed as people join.
+        scoreboard.init(server, zh());
         scoreboard.startHub(server, zh());
     }
 
