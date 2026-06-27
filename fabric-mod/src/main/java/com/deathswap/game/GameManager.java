@@ -155,6 +155,7 @@ public final class GameManager {
         this.phase = GamePhase.HUB;
         SettingsStore.load(settings);
         applyGameRules();
+        Mc.runServer(server, "gamerule doDaylightCycle false");
         winsStore.load();
         items.registerAll();
         // Stand up the hub's wins HUD now; per-player rows are pushed as people join.
@@ -746,6 +747,7 @@ public final class GameManager {
         clearAllAdvancements();
 
         Mc.runServer(server, "time set noon");
+        Mc.runServer(server, "gamerule doDaylightCycle true");
 
         for (ServerPlayer player : participants) {
             PlayerData data = data(player);
@@ -1176,6 +1178,7 @@ public final class GameManager {
         lastCachePendingLogged = -1;
 
         Mc.runServer(server, "time set noon");
+        Mc.runServer(server, "gamerule doDaylightCycle false");
 
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
