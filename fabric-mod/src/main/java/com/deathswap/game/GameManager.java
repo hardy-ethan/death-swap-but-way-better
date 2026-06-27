@@ -158,8 +158,8 @@ public final class GameManager {
         resetAndFreezeTimeAndWeather();
         winsStore.load();
         items.registerAll();
-        scoreboard.init(server, zh());
-        scoreboard.startHub(server, zh());
+        scoreboard.init(server, nl());
+        scoreboard.startHub(server, nl());
     }
 
     /** Persist the current game settings so they survive a server restart. */
@@ -211,8 +211,8 @@ public final class GameManager {
         });
     }
 
-    private boolean zh() {
-        return settings.isChinese() ^ languageToggledByItem;
+    private boolean nl() {
+        return settings.isDutch() ^ languageToggledByItem;
     }
 
     public PlayerData dataIfPresent(UUID uuid) {
@@ -245,8 +245,8 @@ public final class GameManager {
         PlayerData data = data(player);
         data.playing = false;
         player.setGameMode(GameType.SPECTATOR);
-        broadcast(Messages.joinedMidGame(zh(), player.getDisplayName()));
-        Mc.titleRaw(player, Messages.spectateTitle(zh()), Messages.spectateSubtitle(zh()));
+        broadcast(Messages.joinedMidGame(nl(), player.getDisplayName()));
+        Mc.titleRaw(player, Messages.spectateTitle(nl()), Messages.spectateSubtitle(nl()));
     }
 
     public void onPlayerLeave(ServerPlayer player) {
@@ -609,7 +609,7 @@ public final class GameManager {
         // clock.mcfunction: ">> Swapping <<" gold title + countdown subtitle, plus
         // playsound minecraft:block.anvil.land master @s ~ ~ ~ 9 0 (volume 9, pitch 0).
         for (ServerPlayer player : alivePlayers()) {
-            Mc.titleRaw(player, Messages.swappingTitle(zh()), Messages.swappingSubtitle(zh(), secondsLeft));
+            Mc.titleRaw(player, Messages.swappingTitle(nl()), Messages.swappingSubtitle(nl(), secondsLeft));
             Mc.playSound(player, SoundEvents.ANVIL_LAND, 9.0f, 0.0f);
         }
     }
@@ -767,7 +767,7 @@ public final class GameManager {
             // death/relog returns them there rather than the world origin.
             spreadFarAway(player, true);
             // warping_all.mcfunction: ">> Spreading players... <<" action bar.
-            Mc.actionbar(player, Messages.spreadingActionbar(zh()));
+            Mc.actionbar(player, Messages.spreadingActionbar(nl()));
             // Blind everyone for the pre-game freeze window; tickFreeze() holds
             // them in place for the same duration before the swap clock begins.
             Mc.effect(player, MobEffects.BLINDNESS, FREEZE_TICKS / 20, 0);
@@ -778,7 +778,7 @@ public final class GameManager {
 
         phase = GamePhase.RUNNING;
         gameTicksElapsed = 0;
-        scoreboard.start(server, zh());
+        scoreboard.start(server, nl());
         updateSidebar();
         // Hold everyone blind and motionless first; the swap and item clocks only
         // start once the freeze ends (see tickFreeze / startClocksAfterFreeze).
@@ -788,10 +788,10 @@ public final class GameManager {
         // horn (volume 99, pitch 1) and the map credits.
         schedule(20 * 5, () -> {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-                Mc.titleRaw(p, Messages.startTitle(zh()), Messages.startSubtitle(zh()));
+                Mc.titleRaw(p, Messages.startTitle(nl()), Messages.startSubtitle(nl()));
                 Mc.playSound(p, SoundEvents.RAID_HORN, 99.0f, 1.0f);
-                Mc.msg(p, Messages.mapCredit(zh()));
-                Mc.msg(p, Messages.additionalCredit(zh()));
+                Mc.msg(p, Messages.mapCredit(nl()));
+                Mc.msg(p, Messages.additionalCredit(nl()));
             }
         });
 
@@ -844,16 +844,16 @@ public final class GameManager {
             // false for a tick) — reset accumulated fall, with no extra status effects.
             player.fallDistance = 0.0f;
             // swap.mcfunction: clear the title, show the gold ">> Swapped! <<" action
-            // bar, then the green "You warped to: <name>" line (Chinese adds a 2nd line).
+            // bar, then the green "You warped to: <name>" line (Dutch adds a 2nd line).
             // There is no swap sound in the datapack. Use a real `title clear` so the
             // "Swap in 1" countdown subtitle (with its long stay time) vanishes at once
             // instead of lingering on screen.
             Mc.clearTitles(player);
-            Mc.actionbar(player, Messages.swapActionbar(zh()));
+            Mc.actionbar(player, Messages.swapActionbar(nl()));
             ServerPlayer warpedToPlayer = alive.get(destIndex);
-            Mc.msg(player, Messages.warpedTo(zh(), warpedToPlayer.getDisplayName()));
-            if (zh()) {
-                Mc.msg(player, Messages.warpedToChinese());
+            Mc.msg(player, Messages.warpedTo(nl(), warpedToPlayer.getDisplayName()));
+            if (nl()) {
+                Mc.msg(player, Messages.warpedToDutch());
             }
             data(player).canTpAway = true; // restore the emergency teleport each cycle
         }
@@ -894,12 +894,12 @@ public final class GameManager {
 
     public void toggleLanguage() {
         languageToggledByItem = !languageToggledByItem;
-        boolean toChinese = zh();
+        boolean toDutch = nl();
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-            Mc.titleRaw(p, Messages.langTitle(toChinese), Messages.langSubtitle(toChinese));
+            Mc.titleRaw(p, Messages.langTitle(toDutch), Messages.langSubtitle(toDutch));
             Mc.playSound(p, SoundEvents.UI_BUTTON_CLICK, 9.0f, 1.0f);
-            Mc.msg(p, Messages.langBanner(toChinese));
-            if (toChinese) {
+            Mc.msg(p, Messages.langBanner(toDutch));
+            if (toDutch) {
                 Mc.msg(p, Messages.langTranslatorNote());
             }
         }
@@ -943,8 +943,8 @@ public final class GameManager {
         // player_died.mcfunction (runs for every death, including the fatal one):
         // broadcast line, ">> YOU DIED! <<" title and the "-1 Life!" subtitle. The
         // broadcast carries the vanilla death message so it states how they died.
-        broadcast(Messages.diedBroadcast(zh(), source.getLocalizedDeathMessage(player)));
-        Mc.titleRaw(player, Messages.diedTitle(zh()), Messages.diedSubtitle(zh()));
+        broadcast(Messages.diedBroadcast(nl(), source.getLocalizedDeathMessage(player)));
+        Mc.titleRaw(player, Messages.diedTitle(nl()), Messages.diedSubtitle(nl()));
 
         if (data.lives <= 0) {
             eliminate(player);
@@ -1050,7 +1050,7 @@ public final class GameManager {
         // player_eliminated.mcfunction: dragon growl (volume 9, pitch 1.2) and the
         // ">> ELIMINATED! <<" subtitle (the "YOU DIED" title from player_died stays).
         Mc.playSound(player, SoundEvents.ENDER_DRAGON_GROWL, 9.0f, 1.2f);
-        Mc.subtitleRaw(player, Messages.eliminatedSubtitle(zh()));
+        Mc.subtitleRaw(player, Messages.eliminatedSubtitle(nl()));
     }
 
     private void checkWinCondition() {
@@ -1085,10 +1085,10 @@ public final class GameManager {
             // winner.mcfunction: title times 0 140 5, the green win title/subtitle,
             // the dragon-death sound (volume 99) and the broadcast line.
             Component winnerName = winner.getDisplayName();
-            broadcast(Messages.winnerBroadcast(zh(), winnerName));
+            broadcast(Messages.winnerBroadcast(nl(), winnerName));
             for (ServerPlayer p : server.getPlayerList().getPlayers()) {
                 Mc.titleTimes(p, 0, 140, 5);
-                Mc.titleRaw(p, Messages.winnerTitle(zh(), winnerName), Messages.winnerSubtitle(zh()));
+                Mc.titleRaw(p, Messages.winnerTitle(nl(), winnerName), Messages.winnerSubtitle(nl()));
                 Mc.playSound(p, SoundEvents.ENDER_DRAGON_DEATH, 99.0f, 1.0f);
             }
         } else {
@@ -1182,7 +1182,7 @@ public final class GameManager {
         }
         languageToggledByItem = false;
         // Swap the game's lives/health HUD back to the hub's wins tally.
-        scoreboard.startHub(server, zh());
+        scoreboard.startHub(server, nl());
         // Don't discard the cache: a destination is removed from it the moment it's
         // handed out (ChunkCache.next), so anything still queued is unused and safe
         // to carry into the next game. The hub phase tops it back up from here.

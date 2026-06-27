@@ -226,8 +226,8 @@ public final class DeathSwapCommands {
                                 .then(Commands.argument("lang", StringArgumentType.word())
                                         .executes(ctx -> {
                                             String lang = StringArgumentType.getString(ctx, "lang");
-                                            if (lang.equalsIgnoreCase("chinese") || lang.equalsIgnoreCase("zh")) {
-                                                    game.settings().language = GameSettings.Language.CHINESE;
+                                            if (lang.equalsIgnoreCase("dutch") || lang.equalsIgnoreCase("nl")) {
+                                                    game.settings().language = GameSettings.Language.DUTCH;
                                             } else {
                                                     game.settings().language = GameSettings.Language.ENGLISH;
                                             }
