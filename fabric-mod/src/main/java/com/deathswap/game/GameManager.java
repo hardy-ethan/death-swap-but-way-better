@@ -56,11 +56,11 @@ public final class GameManager {
      * {@link #transitionTo} warns loudly if anything tries to cross an unlisted edge.
      *
      * <pre>
-     *   HUB ──(startGame)──▶ RUNNING
-     *   RUNNING ──(declareWinner)──▶ ENDING
-     *   RUNNING ──(forceReturnToHub)──▶ HUB
-     *   ENDING ──(addLife rollback)──▶ RUNNING
-     *   ENDING ──(timer / stop)──▶ HUB
+     *   HUB ──(enterRunning)──▶ RUNNING
+     *   RUNNING ──(enterEnding)──▶ ENDING
+     *   RUNNING ──(enterHub)──▶ HUB
+     *   ENDING ──(rollbackToRunning)──▶ RUNNING
+     *   ENDING ──(enterHub)──▶ HUB
      * </pre>
      */
     private static final java.util.Map<GamePhase, java.util.EnumSet<GamePhase>> VALID_TRANSITIONS;
@@ -651,7 +651,7 @@ public final class GameManager {
 
     private void tickEnding() {
         if (--endingTicksRemaining <= 0) {
-            returnEveryoneToHub();
+            enterHub();
         }
     }
 
@@ -769,6 +769,13 @@ public final class GameManager {
         if (participants.isEmpty()) {
             return false;
         }
+        enterRunning(participants);
+        return true;
+    }
+
+    /** HUB → RUNNING: initialize and launch a new round. */
+    private void enterRunning(List<ServerPlayer> participants) {
+        transitionTo(GamePhase.RUNNING);
         applyGameRules();
 
         startingPlayerCount = participants.size();
@@ -811,7 +818,6 @@ public final class GameManager {
         // Assign permanent slot numbers after the per-player reset (which zeroes them).
         assignPermanentNumbers(participants);
 
-        transitionTo(GamePhase.RUNNING);
         gameTicksElapsed = 0;
         scoreboard.start(server, zh());
         updateSidebar();
@@ -837,7 +843,6 @@ public final class GameManager {
                 data(p).canTpAway = true;
             }
         });
-        return true;
     }
 
     private void resetSwapClock() {
@@ -1094,11 +1099,12 @@ public final class GameManager {
         }
         List<ServerPlayer> alive = alivePlayers();
         if (startingPlayerCount >= 2 && alive.size() <= 1) {
-            declareWinner(alive.isEmpty() ? null : alive.get(0));
+            enterEnding(alive.isEmpty() ? null : alive.get(0));
         }
     }
 
-    private void declareWinner(ServerPlayer winner) {
+    /** RUNNING → ENDING: tally the result and start the 10-second victory countdown. */
+    private void enterEnding(ServerPlayer winner) {
         transitionTo(GamePhase.ENDING);
         endingTicksRemaining = 20 * 10;
         if (winner != null) {
@@ -1132,9 +1138,16 @@ public final class GameManager {
         broadcast(">> Game lasted " + formatClock(gameTicksElapsed / 20) + "! <<", ChatFormatting.GRAY);
     }
 
+    /** ENDING → RUNNING: undo the last winner declaration so the round can continue. */
+    private void rollbackToRunning() {
+        undoWinnerDeclaration();
+        transitionTo(GamePhase.RUNNING);
+        broadcast(">> Game rolled back — a life was granted. <<", ChatFormatting.YELLOW);
+    }
+
     /** Abort the current game (operator /deathswap stop) and reset to the lobby. */
     public void forceReturnToHub() {
-        returnEveryoneToHub();
+        enterHub();
     }
 
     /**
@@ -1153,9 +1166,7 @@ public final class GameManager {
         // the round can continue. This covers the case where this player's death (or
         // elimination) caused the win condition to fire.
         if (phase == GamePhase.ENDING) {
-            undoWinnerDeclaration();
-            transitionTo(GamePhase.RUNNING);
-            broadcast(">> Game rolled back — a life was granted. <<", ChatFormatting.YELLOW);
+            rollbackToRunning();
         }
 
         // Resurrect an eliminated player.
@@ -1202,7 +1213,8 @@ public final class GameManager {
         }
     }
 
-    private void returnEveryoneToHub() {
+    /** RUNNING | ENDING → HUB: end the round and return all players to the lobby. */
+    private void enterHub() {
         transitionTo(GamePhase.HUB);
         // Safety net: if the game is stopped while paused, lift the world freeze and
         // clear the overlay so the hub (and next game) runs normally.
