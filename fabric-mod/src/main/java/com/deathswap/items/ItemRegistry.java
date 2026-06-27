@@ -482,7 +482,12 @@ public final class ItemRegistry {
                 "/clear a RANDOM person's inventory (could be you!!)",
                 "You WON'T get to choose who gets cleared -- the game decides, and it could be you!")
                 .effect((ctx, self, t) -> {
-                    List<ServerPlayer> all = ctx.game().alivePlayers();
+                    List<ServerPlayer> all = new ArrayList<>(ctx.game().alivePlayers());
+                    all.removeIf(p -> ctx.effects().hasEffect(p.getUUID(), "shield"));
+                    if (all.isEmpty()) {
+                        Mc.msg(self, translate(ctx, ">> Everyone is shielded! Item had no effect. <<"), ChatFormatting.RED);
+                        return;
+                    }
                     ServerPlayer victim = all.get(self.getRandom().nextInt(all.size()));
                     // /clear wipes everything EXCEPT the three powerup slots (6,7,8):
                     // the datapack clears only real items, never the offer/filler that
@@ -1216,8 +1221,16 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(81, PINK, ChatFormatting.AQUA,
                 "Re-shuffle everyone around the world EXCEPT YOU", "Everyone needs a reset sometimes")
                 .effect((ctx, self, t) -> {
+                    boolean anyMoved = false;
                     for (ServerPlayer p : ctx.game().alivePlayers()) {
-                        if (p != self) ctx.game().spreadFarAway(p);
+                        if (p != self && !ctx.effects().hasEffect(p.getUUID(), "shield")) {
+                            ctx.game().spreadFarAway(p);
+                            anyMoved = true;
+                        }
+                    }
+                    if (!anyMoved) {
+                        Mc.msg(self, translate(ctx, ">> Everyone else is shielded! Item had no effect. <<"), ChatFormatting.RED);
+                        return;
                     }
                     announce(ctx.game(), self, "Re-shuffled everybody around the world except themself!", null, ChatFormatting.AQUA);
                 }).build());

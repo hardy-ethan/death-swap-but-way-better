@@ -258,6 +258,9 @@ public final class ItemManager {
                 ServerPlayer victim = randomOpponent(player);
                 if (victim != null) {
                     fire(item, player, victim);
+                } else {
+                    Mc.msg(player, Translator.translate(game.settings().isChinese(),
+                            ">> All opponents are shielded! Item had no effect. <<"), ChatFormatting.RED);
                 }
                 afterUse(player);
             }
