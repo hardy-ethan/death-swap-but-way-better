@@ -158,6 +158,7 @@ public final class GameManager {
         this.phase = GamePhase.HUB;
         SettingsStore.load(settings);
         applyGameRules();
+        resetAndFreezeTimeAndWeather();
         winsStore.load();
         items.registerAll();
         scoreboard.init(server, zh());
@@ -755,7 +756,7 @@ public final class GameManager {
         // Every round starts with a clean advancement book for everyone.
         clearAllAdvancements();
 
-        Mc.runServer(server, "time set noon");
+        unfreezeTimeAndWeather();
 
         for (ServerPlayer player : participants) {
             PlayerData data = data(player);
@@ -887,6 +888,18 @@ public final class GameManager {
     public boolean isNight() {
         long time = server.overworld().getOverworldClockTime() % 24000;
         return time >= 13000 && time < 23000;
+    }
+
+    private void resetAndFreezeTimeAndWeather() {
+        Mc.runServer(server, "time set noon");
+        Mc.runServer(server, "gamerule doDaylightCycle false");
+        Mc.runServer(server, "weather clear");
+        Mc.runServer(server, "gamerule doWeatherCycle false");
+    }
+
+    private void unfreezeTimeAndWeather() {
+        Mc.runServer(server, "gamerule doDaylightCycle true");
+        Mc.runServer(server, "gamerule doWeatherCycle true");
     }
 
     public void toggleLanguage() {
@@ -1204,7 +1217,7 @@ public final class GameManager {
         lastCacheReadyLogged = -1; // re-log current cache state as the hub resumes
         lastCachePendingLogged = -1;
 
-        Mc.runServer(server, "time set noon");
+        resetAndFreezeTimeAndWeather();
 
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             sendToHub(player);
