@@ -1,0 +1,5 @@
+# MCP test server
+mcp-test-server/node_modules/
+mcp-test-server/__pycache__/
+mcp-test-server/.venv/
+mcp-test-server/.jdk/
