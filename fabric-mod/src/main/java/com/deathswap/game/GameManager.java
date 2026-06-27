@@ -799,9 +799,17 @@ public final class GameManager {
             // and spread.
             effects.clearAll(player);
             player.removeAllEffects();
-            resetPlayerStats(player);
-            if (settings.startWithBasicTools) {
-                giveStarterKit(player);
+            if (player.isDeadOrDying()) {
+                // Player is on the death screen. Skip setHealth(20) — if we set
+                // health > 0 now the server will ignore their upcoming "Respawn"
+                // click (isDeadOrDying() would be false), leaving them stuck on
+                // the death screen. Defer the full setup to onPlayerRespawn().
+                data.needsSetupOnRespawn = true;
+            } else {
+                resetPlayerStats(player);
+                if (settings.startWithBasicTools) {
+                    giveStarterKit(player);
+                }
             }
             // Spread far away and set the player's spawn at the destination, so a
             // death/relog returns them there rather than the world origin.
@@ -1022,10 +1030,24 @@ public final class GameManager {
             sendToHub(player);
             return;
         }
-        if (phase != GamePhase.RUNNING || !settings.startWithBasicTools) {
+        if (phase != GamePhase.RUNNING) {
             return;
         }
         PlayerData data = data(player);
+        if (data.needsSetupOnRespawn) {
+            data.needsSetupOnRespawn = false;
+            resetPlayerStats(player);
+            if (settings.startWithBasicTools) {
+                giveStarterKit(player);
+            }
+            if (freezeTicksRemaining > 0) {
+                Mc.effect(player, MobEffects.BLINDNESS, freezeTicksRemaining / 20, 0);
+            }
+            return;
+        }
+        if (!settings.startWithBasicTools) {
+            return;
+        }
         if (data.playing && !data.eliminated && player.getInventory().isEmpty()) {
             giveStarterKit(player);
         }

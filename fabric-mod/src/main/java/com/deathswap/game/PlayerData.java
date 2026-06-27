@@ -69,6 +69,15 @@ public final class PlayerData {
     /** True while the target prompt is being sent, to prevent re-entry from the message mixin. */
     public boolean sendingTargetPrompt;
 
+    /**
+     * Set when a player was dead at game start and their full setup (stat reset,
+     * starter kit, blindness) must be deferred until they click Respawn. Without
+     * this flag, calling setHealth(20) in resetPlayerStats() would make the server
+     * ignore the player's respawn request (isDeadOrDying() == false), leaving them
+     * permanently stuck on the death screen.
+     */
+    public boolean needsSetupOnRespawn;
+
     public PlayerData(UUID uuid) {
         this.uuid = uuid;
     }
@@ -95,6 +104,7 @@ public final class PlayerData {
         canTpAway = false;
         spawnPos = null;
         spawnYaw = 0.0f;
+        needsSetupOnRespawn = false;
         clearOffer();
     }
 
@@ -110,6 +120,7 @@ public final class PlayerData {
         canTpAway = false;
         spawnPos = null;
         spawnYaw = 0.0f;
+        needsSetupOnRespawn = false;
         clearOffer();
     }
 }
