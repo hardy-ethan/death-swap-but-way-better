@@ -55,12 +55,7 @@ public final class GameSettings {
 
     public SwapWarning swapWarning = SwapWarning.TEN_SECONDS;
 
-    /**
-     * Per-game language toggle (item 72 / hub default), not a persistent rule:
-     * it resets to English in the hub, so {@code transient} keeps it out of the
-     * settings file written by {@link com.deathswap.config.SettingsStore}.
-     */
-    public transient Language language = Language.ENGLISH;
+    public Language language = Language.ENGLISH;
 
     public boolean isChinese() {
         return language == Language.CHINESE;
