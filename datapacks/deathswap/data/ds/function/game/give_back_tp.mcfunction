@@ -1,2 +1,0 @@
-execute as @a[tag=playing,tag=!cant_tp_away] run scoreboard players enable @s tp_away
-execute as @a[tag=playing,tag=!cant_tp_away] run tellraw @s [{"text":">> ","color":"dark_purple","italic":true},{"text":"You can use /trigger tp_away now!","color":"light_purple"}]
