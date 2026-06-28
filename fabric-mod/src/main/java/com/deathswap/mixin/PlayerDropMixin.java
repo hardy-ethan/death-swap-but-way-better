@@ -34,7 +34,7 @@ public abstract class PlayerDropMixin {
         ServerPlayer player = (ServerPlayer) (Object) this;
         if (DeathSwapMod.game() == null) return;
         var game = DeathSwapMod.game();
-        if (game.isPaused()) {
+        if (game.isPaused() || game.isInLoadingFreeze()) {
             player.getInventory().setItem(player.getInventory().getSelectedSlot(), stack);
             player.containerMenu.sendAllDataToRemote();
             cir.setReturnValue(null);

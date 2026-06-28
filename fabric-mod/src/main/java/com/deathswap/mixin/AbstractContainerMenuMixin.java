@@ -31,8 +31,8 @@ public abstract class AbstractContainerMenuMixin {
             return;
         }
 
-        // While the game is paused, freeze all inventory interaction.
-        if (DeathSwapMod.game() != null && DeathSwapMod.game().isPaused()) {
+        // While the game is paused or in the loading freeze, block all inventory interaction.
+        if (DeathSwapMod.game() != null && (DeathSwapMod.game().isPaused() || DeathSwapMod.game().isInLoadingFreeze())) {
             ci.cancel();
             serverPlayer.containerMenu.sendAllDataToRemote();
             return;

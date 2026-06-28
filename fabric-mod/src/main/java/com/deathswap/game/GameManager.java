@@ -243,6 +243,11 @@ public final class GameManager {
         return paused;
     }
 
+    /** True during the pre-game blindness/loading freeze (read by the damage event and mixins). */
+    public boolean isInLoadingFreeze() {
+        return phase == GamePhase.RUNNING && freezeTicksRemaining > 0;
+    }
+
     public PlayerData data(ServerPlayer player) {
         playerNames.put(player.getUUID(), player.getScoreboardName());
         return playerData.computeIfAbsent(player.getUUID(), uuid -> {
