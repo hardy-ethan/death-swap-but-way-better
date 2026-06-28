@@ -77,27 +77,29 @@ public final class DeathSwapMod implements ModInitializer {
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) ->
                 GAME.onPlayerRespawn(newPlayer, alive));
 
-        // While the game is paused, freeze all damage to living entities.
-        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> !GAME.isPaused());
+        // While paused or in the loading freeze, block all damage to living entities.
+        ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) ->
+                !GAME.isPaused() && !GAME.isInLoadingFreeze());
 
-        // While paused, freeze all player input that could change the world or
-        // entities: block breaking/use, item use, and attacking/interacting with
-        // entities. (Movement is undone by the hold-in-place loop; container clicks
-        // and per-player effect ticking are frozen by the mixins.)
-        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> !GAME.isPaused());
+        // While paused or in the loading freeze, block all player input that could
+        // change the world or entities: block breaking/use, item use, and
+        // attacking/interacting with entities. (Movement is undone by the
+        // hold-in-place loop; container clicks are frozen by the mixins.)
+        PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) ->
+                !GAME.isPaused() && !GAME.isInLoadingFreeze());
         AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) ->
-                GAME.isPaused() ? InteractionResult.FAIL : InteractionResult.PASS);
+                (GAME.isPaused() || GAME.isInLoadingFreeze()) ? InteractionResult.FAIL : InteractionResult.PASS);
         UseItemCallback.EVENT.register((player, world, hand) ->
-                GAME.isPaused() ? InteractionResult.FAIL : InteractionResult.PASS);
+                (GAME.isPaused() || GAME.isInLoadingFreeze()) ? InteractionResult.FAIL : InteractionResult.PASS);
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) ->
-                GAME.isPaused() ? InteractionResult.FAIL : InteractionResult.PASS);
+                (GAME.isPaused() || GAME.isInLoadingFreeze()) ? InteractionResult.FAIL : InteractionResult.PASS);
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) ->
-                GAME.isPaused() ? InteractionResult.FAIL : InteractionResult.PASS);
+                (GAME.isPaused() || GAME.isInLoadingFreeze()) ? InteractionResult.FAIL : InteractionResult.PASS);
 
         // The powerup slots hold a barrier as filler, which is a placeable block.
         // Cancel any attempt to place it so players can't build with it.
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (GAME.isPaused()) {
+            if (GAME.isPaused() || GAME.isInLoadingFreeze()) {
                 if (player instanceof ServerPlayer sp) {
                     sp.containerMenu.sendAllDataToRemote();
                 }
