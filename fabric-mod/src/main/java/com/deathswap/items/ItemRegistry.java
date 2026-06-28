@@ -882,6 +882,830 @@ public final class ItemRegistry {
                     announce(ctx.game(), self, "Summoned a California-level earthquake on the world", null, ChatFormatting.WHITE);
                 }).build());
 
+        add(DeathSwapItem.of(56, BROWN, ChatFormatting.YELLOW,
+                "Block someone from using any items: 3 mins", "The whole gimmick of this map, the items, they can't even use")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ctx.effects().apply(t, new ActiveEffect("blockedItems", 155 * 20, null,
+                            p -> Mc.msg(p, translate(ctx, ">> You can use items again!!! <<"), ChatFormatting.GREEN)));
+                    ctx.game().data(t).clearOffer();
+                    Mc.title(t, " ", translate(ctx, ">> You can't use items for 3 minutes! <<"), ChatFormatting.WHITE, ChatFormatting.RED);
+                    // Datapack 56b warns the target immediately (the round-robin "** Items
+                    // blocked!" only fires on their item turn, which felt like nothing
+                    // happened), so confirm the block right away.
+                    boolean nlBlocked = ctx.game().settings().isDutch();
+                    Mc.msg(t, Component.literal(
+                            Translator.translate(nlBlocked, ">>> IMPORTANT: You can't use ANY items for 3 minutes because ")
+                            + self.getScoreboardName()
+                            + Translator.translate(nlBlocked, " used an item on you! <<<"))
+                            .withStyle(s -> s.withColor(ChatFormatting.RED).withBold(true)));
+                    announce(ctx.game(), self, "Blocked item usage for", t, ChatFormatting.AQUA);
+                }).build());
+
+        add(DeathSwapItem.of(57, YELLOW, ChatFormatting.YELLOW,
+                "Give yourself an enchanted golden apple", "Notch would be proud of you")
+                .effect((ctx, self, t) -> Mc.give(self, Items.ENCHANTED_GOLDEN_APPLE, 1)).build());
+
+        add(DeathSwapItem.of(58, GREEN, ChatFormatting.GREEN,
+                "Force a player to look down for 45 secs", "Always look where you're stepping!")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ctx.effects().apply(t, new ActiveEffect("look_down", 45 * 20,
+                            p -> Mc.rotateRelative(p, 0f, 8f), null));
+                    announce(ctx.game(), self, "Forced a downward look for 45 seconds:", t, ChatFormatting.GREEN);
+                }).build());
+
+        add(DeathSwapItem.of(59, WHITE, ChatFormatting.GREEN,
+                "Bombard someone with a ton of ghasts", "WHEWW!")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    double[][] off = {{0, 5, 0}, {0, 5, 0}, {0, 7, 0}, {0, 9, 0}, {6, 5, 0}, {-6, 5, 0},
+                            {0, 5, 10}, {-3, 5, -10}, {0, 4, 12}, {0, 4, -12}, {12, 4, 0}, {12, 4, 0}};
+                    for (double[] d : off) Mc.summonRel(t, EntityTypes.GHAST, d[0], d[1], d[2]);
+                    announce(ctx.game(), self, "Bombarded with a heck-ton of ghasts:", t, ChatFormatting.WHITE);
+                }).build());
+
+        add(DeathSwapItem.of(60, LIME, ChatFormatting.RED,
+                "Jumpscare someone", "Life-threatening scariness")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> jumpscare(ctx, self, t)).build());
+        add(DeathSwapItem.of(61, RED, ChatFormatting.RED,
+                "Lock someone into a prison", "Experience the prison-industrial complex for yourself")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
+                    BlockPos o = at(t);
+                    // Bedrock floor & ceiling.
+                    Mc.fill(lvl, o.offset(10, -1, 6), o.offset(-10, -1, -6), Blocks.BEDROCK, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 2, 6), o.offset(-10, 2, -6), Blocks.BEDROCK, FillMode.ALL);
+                    // Lower wall ring: obsidian. Upper ring: crying obsidian (datapack).
+                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(-10, 0, 6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 0, -6), o.offset(-10, 0, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 0, 6), o.offset(10, 0, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-10, 0, 6), o.offset(-10, 0, -6), Blocks.OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 1, 6), o.offset(-10, 1, 6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 1, -6), o.offset(-10, 1, -6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(10, 1, 6), o.offset(10, 1, -6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-10, 1, 6), o.offset(-10, 1, -6), Blocks.CRYING_OBSIDIAN, FillMode.ALL);
+                    // A torch for light, and a chest with a worn diamond pickaxe (slot 13,
+                    // damage 1500) so the prisoner can slowly mine their way out.
+                    Mc.setBlock(lvl, o, Blocks.TORCH);
+                    ItemStack pick = new ItemStack(Items.DIAMOND_PICKAXE);
+                    pick.set(net.minecraft.core.component.DataComponents.DAMAGE, 1500);
+                    Mc.chestWithItem(lvl, o.offset(2, 0, 1), 13, pick);
+                    announce(ctx.game(), self, "Trapped inside of a prison:", t, ChatFormatting.RED);
+                }).build());
+
+        add(DeathSwapItem.of(62, CYAN, ChatFormatting.AQUA,
+                "Give yourself a water bucket", "Avoid the hassle of infinite water sources")
+                .effect((ctx, self, t) -> Mc.give(self, Items.WATER_BUCKET, 1)).build());
+
+        add(DeathSwapItem.of(63, ORANGE, ChatFormatting.GOLD,
+                "Give yourself a lava bucket", "Sometimes ,the best traps are the simplest")
+                .effect((ctx, self, t) -> Mc.give(self, Items.LAVA_BUCKET, 1)).build());
+
+        add(DeathSwapItem.of(64, ORANGE, ChatFormatting.GOLD,
+                "Give yourself a long fire resistance potion", "Because the Nether exists, yunno?")
+                .effect((ctx, self, t) -> Mc.givePotion(self, Potions.LONG_FIRE_RESISTANCE)).build());
+
+        add(DeathSwapItem.of(65, CYAN, ChatFormatting.AQUA,
+                "Liquidate all blocks surrounding a player", "Because the Nether exists, yunno?")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
+                    BlockPos o = at(t);
+                    replaceTagged(lvl, o.offset(12, 6, 12), o.offset(-12, -1, -12), Blocks.WATER.defaultBlockState());
+                    replaceTagged(lvl, o.offset(12, -2, 12), o.offset(-12, -6, -12), Blocks.WATER.defaultBlockState());
+                    announce(ctx.game(), self, "Liquidated all nearby blocks into water:", t, ChatFormatting.AQUA);
+                }).build());
+
+        add(DeathSwapItem.of(66, WHITE, ChatFormatting.GRAY,
+                "Set time to midnight (or mid-day if it's night)", "Minecraft")
+                .effect((ctx, self, t) -> {
+                    ctx.game().toggleTime();
+                    announce(ctx.game(), self, ctx.game().isNight() ? "Set the time to midnight" : "Set the time to day",
+                            null, ChatFormatting.WHITE);
+                }).build());
+
+        add(DeathSwapItem.of(67, LIME, ChatFormatting.GREEN,
+                "Spawn a giant slime on someone", "That's the biggest slime I've ever seen!")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    Entity e = Mc.summonRel(t, EntityTypes.SLIME, 4, 6, 2);
+                    if (e instanceof net.minecraft.world.entity.monster.cubemob.Slime slime) slime.setSize(8, true);
+                    announce(ctx.game(), self, "Spawned a giant slime on", t, ChatFormatting.GREEN);
+                }).build());
+
+        add(DeathSwapItem.of(68, RED, ChatFormatting.RED,
+                "Give yourself 4 extra hearts for health", "More harts!")
+                .effect((ctx, self, t) -> {
+                    Mc.addMaxHealth(self, 8.0);
+                    Mc.msg(self, translate(ctx, "+4 Hearts!"), ChatFormatting.RED);
+                }).build());
+
+        add(DeathSwapItem.of(69, RED, ChatFormatting.RED,
+                "Take away 2 hearts from someone (leave them w/8)", "Less harts!")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    Mc.addMaxHealth(t, -4.0);
+                    announce(ctx.game(), self, "Removed 2 hearts from", t, ChatFormatting.RED);
+                }).build());
+
+        add(DeathSwapItem.of(70, GREEN, ChatFormatting.GREEN,
+                "Launch a Viet Cong ambush on someone", "Queue the Rolling Stones music")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    // misc/tet_offensive: ~45 parched (the desert skeleton), named "The
+                    // Việt Cộng", attack_damage 2, each wearing a "Vietnam Flag" player
+                    // head (minecraft-heads #35930), ringed around the target, then a
+                    // yellow banner planted at their feet.
+                    // Build the profile component through Minecraft's own codec rather
+                    // than hand-assembling authlib's PropertyMap/GameProfile. The
+                    // hand-built map round-trips to the client unsigned and blows up
+                    // (UnsupportedOperationException) during skin resolution; the codec
+                    // path is exactly what `/give player_head[profile=...]` and the
+                    // datapack used, so it serializes and renders safely.
+                    com.google.gson.JsonObject profileJson = new com.google.gson.JsonObject();
+                    com.google.gson.JsonArray profileProps = new com.google.gson.JsonArray();
+                    com.google.gson.JsonObject texturesProp = new com.google.gson.JsonObject();
+                    texturesProp.addProperty("name", "textures");
+                    texturesProp.addProperty("value",
+                            "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMWM4YjdjN2ZiMDhhYjg5NDc4MTJiYjlkMTRkYTA0OWVkMmQ1MWFkOGNiOTMyYjM5MmMyMjY2YjI1N2FkYzJhYyJ9fX0=");
+                    profileProps.add(texturesProp);
+                    profileJson.add("properties", profileProps);
+                    net.minecraft.world.item.component.ResolvableProfile vietProfile =
+                            net.minecraft.world.item.component.ResolvableProfile.CODEC
+                                    .parse(com.mojang.serialization.JsonOps.INSTANCE, profileJson)
+                                    .getOrThrow();
+                    ItemStack vietHead = new ItemStack(Items.PLAYER_HEAD);
+                    vietHead.set(net.minecraft.core.component.DataComponents.PROFILE, vietProfile);
+                    vietHead.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                            Component.literal("Vietnam Flag").withStyle(ChatFormatting.GOLD));
+                    double[][] ring = {
+                            {8, 0}, {-8, 0}, {0, 8}, {0, -8},
+                            {8, 2}, {-8, 2}, {2, 8}, {2, -8}, {8, -2}, {-8, -2}, {-2, 8}, {-2, -8},
+                            {5, 5}, {5, -5}, {-5, 5}, {-5, -5},
+                            {6.5, 3.5}, {-6.5, 3.5}, {-6.5, -3.5}, {6.5, -3.5},
+                            {3.5, 6.5}, {-3.5, 6.5}, {-3.5, -6.5}, {3.5, -6.5},
+                            {5, 0}, {-5, 0}, {0, 5}, {0, -5},
+                            {3, 0}, {2, 0}, {-2, 0}, {0, 2}, {0, -2},
+                            {2, 2}, {-2, 2}, {-2, -2}, {2, -2},
+                            {12, 0}, {-12, 0}, {0, 12}, {0, -12},
+                            {14, 14}, {-14, -14}, {-14, 14}, {14, -14},
+                            {0, 0}, {0, 0}, {0, 0}};
+                    for (double[] d : ring) {
+                        // Configure equipment before the entity enters the world so the
+                        // initial spawn packet already carries the correct (bow-free) gear,
+                        // preventing a client-side desync where the client shows a bow even
+                        // though the server has none.
+                        ItemStack headCopy = vietHead.copy();
+                        String name = translate(ctx, "The Việt Cộng");
+                        Mc.summonRelSafe(t, EntityTypes.PARCHED, d[0], d[1], mob -> {
+                            if (mob instanceof Monster m) {
+                                m.setCustomName(Component.literal(name));
+                                m.setPersistenceRequired();
+                                m.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, headCopy);
+                                m.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+                                var atk = m.getAttribute(Attributes.ATTACK_DAMAGE);
+                                if (atk != null) atk.setBaseValue(2.0);
+                            }
+                        });
+                    }
+                    // A yellow banner with the red/yellow flag design from the datapack.
+                    // Place the banner block first so it always appears; the flag
+                    // pattern overlay below is best-effort and must never prevent the
+                    // banner (or the announcements after it) from happening.
+                    ServerLevel bannerLevel = Mc.level(t);
+                    BlockPos bannerPos = at(t);
+                    net.minecraft.world.level.block.Block bannerBlock = Blocks.BANNER.pick(YELLOW);
+                    Mc.setBlock(bannerLevel, bannerPos, bannerBlock);
+                    try {
+                        var patternReg = ctx.server().registryAccess().lookupOrThrow(Registries.BANNER_PATTERN);
+                        net.minecraft.world.level.block.entity.BannerPatternLayers flag =
+                                new net.minecraft.world.level.block.entity.BannerPatternLayers.Builder()
+                                        .add(patternReg.getOrThrow(net.minecraft.world.level.block.entity.BannerPatterns.STRIPE_MIDDLE), RED)
+                                        .add(patternReg.getOrThrow(net.minecraft.world.level.block.entity.BannerPatterns.FLOWER), YELLOW)
+                                        .add(patternReg.getOrThrow(net.minecraft.world.level.block.entity.BannerPatterns.STRIPE_TOP), RED)
+                                        .add(patternReg.getOrThrow(net.minecraft.world.level.block.entity.BannerPatterns.RHOMBUS_MIDDLE), YELLOW)
+                                        .add(patternReg.getOrThrow(net.minecraft.world.level.block.entity.BannerPatterns.STRIPE_BOTTOM), RED)
+                                        .add(patternReg.getOrThrow(net.minecraft.world.level.block.entity.BannerPatterns.TRIANGLE_BOTTOM), RED)
+                                        .build();
+                        if (bannerLevel.getBlockEntity(bannerPos) instanceof net.minecraft.world.level.block.entity.BannerBlockEntity be) {
+                            ItemStack bannerStack = new ItemStack(bannerBlock);
+                            bannerStack.set(net.minecraft.core.component.DataComponents.BANNER_PATTERNS, flag);
+                            be.applyComponentsFromItemStack(bannerStack);
+                            be.setChanged();
+                            net.minecraft.world.level.block.state.BlockState bs = bannerLevel.getBlockState(bannerPos);
+                            bannerLevel.sendBlockUpdated(bannerPos, bs, bs, net.minecraft.world.level.block.Block.UPDATE_ALL);
+                        }
+                    } catch (Exception bannerEx) {
+                        // Banner is already placed; the flag overlay is cosmetic.
+                    }
+                    clearNightVisionAll(ctx);
+                    announce(ctx.game(), self, "Ambushed with a Viet Cong attack:", t, ChatFormatting.GREEN);
+                    ctx.game().broadcast("Thanks Wall!", ChatFormatting.WHITE);
+                    for (ServerPlayer p : ctx.server().getPlayerList().getPlayers()) {
+                        Mc.playSound(p, SoundEvents.GHAST_SCREAM, 9f, 1.0f);
+                    }
+                }).build());
+
+        add(DeathSwapItem.of(71, LIGHT_BLUE, ChatFormatting.AQUA,
+                "Give yourself a one-hit-kill sword", "One hit, one kill, just in case...")
+                .effect((ctx, self, t) -> {
+                    // Datapack gives a diamond sword at 1 durability (damage=1560 of
+                    // 1561) so it breaks after a single swing — "ONE USE".
+                    ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
+                    Mc.enchant(self, sword, Enchantments.SHARPNESS, 5);
+                    Mc.enchant(self, sword, Enchantments.FIRE_ASPECT, 1);
+                    Mc.enchant(self, sword, Enchantments.KNOCKBACK, 2);
+                    Mc.enchant(self, sword, Enchantments.LOOTING, 3);
+                    sword.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                            Component.literal(translate(ctx, "One-hit-kill -- ONE USE!")).withStyle(ChatFormatting.AQUA));
+                    ItemAttributeModifiers mods = ItemAttributeModifiers.builder()
+                            .add(Attributes.ATTACK_DAMAGE, new AttributeModifier(
+                                    Identifier.fromNamespaceAndPath("deathswap", "one_hit"),
+                                    999999.0, AttributeModifier.Operation.ADD_VALUE), EquipmentSlotGroup.MAINHAND)
+                            .build();
+                    sword.set(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, mods);
+                    // Leave exactly one point of durability so it shatters on use.
+                    sword.set(net.minecraft.core.component.DataComponents.DAMAGE, sword.getMaxDamage() - 1);
+                    // Irreparable: no material/anvil can top it back up.
+                    sword.set(net.minecraft.core.component.DataComponents.REPAIRABLE,
+                            new net.minecraft.world.item.enchantment.Repairable(
+                                    net.minecraft.core.HolderSet.empty()));
+                    Mc.giveStack(self, sword);
+                }).build());
+
+        add(DeathSwapItem.of(72, LIME, ChatFormatting.LIGHT_PURPLE,
+                "Switch game's language to Dutch Nederlands", "For the culture!!!")
+                .effect((ctx, self, t) -> {
+                    ctx.game().toggleLanguage();
+                    // use/72a.mcfunction: a per-using-player broadcast after the switch.
+                    ctx.game().broadcast(com.deathswap.game.Messages.langSwitched(
+                            ctx.game().settings().isDutch(), self.getDisplayName()));
+                }).build());
+
+        add(DeathSwapItem.of(73, GRAY, ChatFormatting.WHITE,
+                "Set /difficulty to hard", "How Notch intended Death Swap to be played")
+                .effect((ctx, self, t) -> {
+                    ctx.server().setDifficulty(Difficulty.HARD, true);
+                    announce(ctx.game(), self, "Set the difficulty to hard!", null, ChatFormatting.WHITE);
+                }).build());
+
+        add(DeathSwapItem.of(74, ORANGE, ChatFormatting.GOLD,
+                "Set /difficulty to normal", "How Notch intended Death Swap to be played")
+                .effect((ctx, self, t) -> {
+                    ctx.server().setDifficulty(Difficulty.NORMAL, true);
+                    announce(ctx.game(), self, "Set the difficulty to normal", null, ChatFormatting.GOLD);
+                }).build());
+
+        add(DeathSwapItem.of(75, LIME, ChatFormatting.GREEN,
+                "Set /difficulty to easy", "How Jeb intended Death Swap to be played")
+                .effect((ctx, self, t) -> {
+                    ctx.server().setDifficulty(Difficulty.EASY, true);
+                    announce(ctx.game(), self, "Set the difficulty to easy", null, ChatFormatting.GREEN);
+                }).build());
+
+        add(DeathSwapItem.of(76, GREEN, ChatFormatting.GREEN,
+                "Teleport someone to a superflat world", "Throwback 2014")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    // Datapack 76b: spread the target into the bundled ds:superflat dimension.
+                    ServerLevel flat = ctx.server().getLevel(
+                            ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("ds", "superflat")));
+                    if (flat != null) {
+                        double angle = t.getRandom().nextDouble() * Math.PI * 2;
+                        double radius = 10 + t.getRandom().nextDouble() * (29_999_000 - 10);
+                        int x = (int) (Math.cos(angle) * radius);
+                        int z = (int) (Math.sin(angle) * radius);
+                        // Force the destination chunk to generate before sampling the
+                        // heightmap; on an ungenerated chunk getHeight() returns the world
+                        // minimum, which dropped the player into the void below the flats.
+                        flat.getChunk(x >> 4, z >> 4);
+                        int y = flat.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+                        Mc.teleportTo(t, flat, x + 0.5, y, z + 0.5, t.getYRot(), t.getXRot());
+                    }
+                    announce(ctx.game(), self, "Teleported to a superflat world:", t, ChatFormatting.GREEN);
+                }).build());
+
+        add(DeathSwapItem.of(77, BROWN, ChatFormatting.GREEN,
+                "Give yourself a crafting table, furnace, & materials", "In case you can't get the essentials")
+                .effect((ctx, self, t) -> {
+                    Mc.give(self, Items.OAK_PLANKS, 8);
+                    Mc.give(self, Items.COBBLESTONE, 8);
+                    Mc.give(self, Items.COAL, 8);
+                    Mc.give(self, Items.CRAFTING_TABLE, 1);
+                    Mc.give(self, Items.FURNACE, 1);
+                    Mc.give(self, Items.BLAST_FURNACE, 1);
+                }).build());
+
+        add(DeathSwapItem.of(78, BROWN, ChatFormatting.YELLOW,
+                "Crash somebody's Minecraft game", "Breaking the fourth.. er, actually all the walls")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    // We do NOT actually crash a client; reproduce the in-game warning + heavy disorientation.
+                    Mc.title(t, translate(ctx, ">>> WARNING!! <<<"), translate(ctx, "Your game will lag heavily!"), ChatFormatting.RED, ChatFormatting.RED);
+                    Mc.effect(t, MobEffects.NAUSEA, 12, 0);
+                    Mc.effect(t, MobEffects.BLINDNESS, 6, 0);
+                    announce(ctx.game(), self, "Crashed the Minecraft game of", t, ChatFormatting.YELLOW);
+                }).build());
+
+        add(DeathSwapItem.of(79, BROWN, ChatFormatting.WHITE,
+                "Turn OFF Keep Inventory (or ON if it's off)", "Now you REALLY don't wanna die!")
+                .effect((ctx, self, t) -> {
+                    var rules = ctx.server().getGameRules();
+                    boolean next = !rules.get(GameRules.KEEP_INVENTORY);
+                    rules.set(GameRules.KEEP_INVENTORY, next, ctx.server());
+                    announce(ctx.game(), self, next ? "Turned keep_inventory BACK ON!" : "Turned keep_inventory OFF!",
+                            null, ChatFormatting.AQUA);
+                }).build());
+
+        add(DeathSwapItem.of(80, WHITE, ChatFormatting.WHITE,
+                "Put someone into spectator mode: 20 secs", "Life as a floating ghostly head!")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    t.setGameMode(GameType.SPECTATOR);
+                    ctx.effects().apply(t, new ActiveEffect("specMode", 21 * 20, null,
+                            p -> p.setGameMode(GameType.SURVIVAL)));
+                    announce(ctx.game(), self, "Put into spectator mode for 20 seconds:", t, ChatFormatting.WHITE);
+                }).build());
+
+        add(DeathSwapItem.of(81, PINK, ChatFormatting.AQUA,
+                "Re-shuffle everyone around the world EXCEPT YOU", "Everyone needs a reset sometimes")
+                .effect((ctx, self, t) -> {
+                    boolean anyMoved = false;
+                    for (ServerPlayer p : ctx.game().alivePlayers()) {
+                        if (p != self && !ctx.effects().hasEffect(p.getUUID(), "shield")) {
+                            ctx.game().spreadFarAway(p);
+                            anyMoved = true;
+                        }
+                    }
+                    if (!anyMoved) {
+                        Mc.msg(self, translate(ctx, ">> Everyone else is shielded! Item had no effect. <<"), ChatFormatting.RED);
+                        return;
+                    }
+                    announce(ctx.game(), self, "Re-shuffled everybody around the world except themself!", null, ChatFormatting.AQUA);
+                }).build());
+
+        add(DeathSwapItem.of(82, MAGENTA, ChatFormatting.LIGHT_PURPLE,
+                "Place an Amethyst Geode where you are", "Your favorite 1.21 addition")
+                .effect((ctx, self, t) -> {
+                    // Loads the bundled saved structure (data/minecraft/structure/amethyst_geode.nbt),
+                    // exactly like the datapack's structure_block[mode=load] at ~ ~ ~1.
+                    Mc.placeTemplate(Mc.level(self), at(self).offset(0, 0, 1), "amethyst_geode");
+                    Mc.msg(self, translate(ctx, "You placed an Amethyst Geode"), ChatFormatting.LIGHT_PURPLE);
+                    Mc.playSound(self, SoundEvents.ITEM_PICKUP, 9f, 1.0f);
+                }).build());
+
+        add(DeathSwapItem.of(83, RED, ChatFormatting.AQUA,
+                "Turn OFF /gamerule natural regeneration (or ON if it's off)", "Everyone needs a reset sometimes")
+                .effect((ctx, self, t) -> {
+                    var rules = ctx.server().getGameRules();
+                    boolean next = !rules.get(GameRules.NATURAL_HEALTH_REGENERATION);
+                    rules.set(GameRules.NATURAL_HEALTH_REGENERATION, next, ctx.server());
+                    announce(ctx.game(), self, next ? "Turned natural_regeneration BACK ON!"
+                            : "Turned natural_regeneration OFF!", null, ChatFormatting.AQUA);
+                }).build());
+
+        add(DeathSwapItem.of(84, WHITE, ChatFormatting.WHITE,
+                "Build a Quartz maze around someone", "Severance in Minecraft")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    BlockPos o = at(t);
+                    int y = o.getY();
+                    // misc/quartz_pillars ly/uy, chosen by the target's Y band (84b).
+                    int ly = y <= -55 ? -63 : y - 10;
+                    int uy = y >= 296 ? 319 : y + 24;
+                    quartzMaze(Mc.level(t), o, ly, uy);
+                    announce(ctx.game(), self, "Built a Quartz maze around", t, ChatFormatting.WHITE);
+                }).build());
+
+        add(DeathSwapItem.of(85, GRAY, ChatFormatting.GRAY,
+                "Turn all blocks near someone to obsidian", "Just in case you need a portal")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    replaceTagged(Mc.level(t), at(t).offset(5, 3, 5), at(t).offset(-5, -2, -5),
+                            Blocks.OBSIDIAN.defaultBlockState());
+                    announce(ctx.game(), self, "Turned all nearby blocks to obsidian for", t, ChatFormatting.YELLOW);
+                }).build());
+
+        add(DeathSwapItem.of(86, LIGHT_GRAY, ChatFormatting.GOLD,
+                "Build a Stalagmite trap next to you", "A classic death swap trap")
+                .effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    BlockState ladderN = Blocks.LADDER.defaultBlockState();
+                    Mc.setBlock(lvl, o.offset(0, -4, 4), Blocks.TUFF);
+                    // upper segment (y 0..12)
+                    Mc.fill(lvl, o.offset(0, 0, 3), o.offset(0, 12, 3), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(0, 0, 5), o.offset(0, 12, 5), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, 0, 4), o.offset(0, 12, 4), Mc.light(15), FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, 0, 4), o.offset(1, 12, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-1, 0, 4), o.offset(-1, 12, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, 0, 2), o.offset(0, 12, 2), ladderN, FillMode.ALL);
+                    // lower segment (y -3..0)
+                    Mc.fill(lvl, o.offset(0, -3, 3), o.offset(0, 0, 3), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(0, -3, 5), o.offset(0, 0, 5), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, -3, 4), o.offset(0, 0, 4), Mc.light(15), FillMode.ALL);
+                    Mc.fill(lvl, o.offset(1, -3, 4), o.offset(1, 0, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(-1, -3, 4), o.offset(-1, 0, 4), Blocks.TUFF, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(0, -3, 2), o.offset(0, 0, 2), ladderN, FillMode.ALL);
+                    Mc.setState(lvl, o.offset(0, -3, 4),
+                            Mc.dripstone(net.minecraft.world.level.block.state.properties.SpeleothemThickness.FRUSTUM, Direction.UP));
+                    Mc.setState(lvl, o.offset(0, -2, 4),
+                            Mc.dripstone(net.minecraft.world.level.block.state.properties.SpeleothemThickness.TIP, Direction.UP));
+                    Mc.fill(lvl, o, o.offset(0, 1, 1), Blocks.AIR, FillMode.ALL);
+                    Mc.fill(lvl, o.offset(0, 13, 2), o.offset(0, 14, 4), Blocks.AIR, FillMode.ALL);
+                    Mc.setYaw(self, 0);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, translate(ctx, "You built a Stalagmite trap in front of you!"), ChatFormatting.GOLD);
+                }).build());
+
+        add(DeathSwapItem.of(87, RED, ChatFormatting.LIGHT_PURPLE,
+                "Delete the Chunk someone's standing in", "That's a 16x16 hole in the world, BTW")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
+                    BlockPos o = at(t);
+                    Mc.fill(lvl, new BlockPos(o.getX() + 7, -63, o.getZ() + 10),
+                            new BlockPos(o.getX() - 8, -63, o.getZ() - 5), Blocks.WATER, FillMode.ALL);
+                    Mc.fill(lvl, new BlockPos(o.getX() + 7, -62, o.getZ() + 10),
+                            new BlockPos(o.getX() - 8, 319, o.getZ() - 5), Blocks.AIR, FillMode.ALL);
+                    clearNightVisionAll(ctx);
+                    announce(ctx.game(), self, "Deleted the chunk standing in:", t, ChatFormatting.LIGHT_PURPLE);
+                }).build());
+
+        add(DeathSwapItem.of(88, YELLOW, ChatFormatting.YELLOW,
+                "Switch places with someone", "Like a sub-death swap")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    Vec3 a = self.position(), b = t.position();
+                    ServerLevel la = Mc.level(self), lb = Mc.level(t);
+                    Mc.teleportTo(self, lb, b.x, b.y, b.z, self.getYRot(), self.getXRot());
+                    Mc.teleportTo(t, la, a.x, a.y, a.z, t.getYRot(), t.getXRot());
+                    announce(ctx.game(), self, "Switched places with", t, ChatFormatting.YELLOW);
+                }).build());
+
+        add(DeathSwapItem.of(89, LIGHT_BLUE, ChatFormatting.AQUA,
+                "Mine blocks faster for 90 seconds", "You could mine the whole world!")
+                .effect((ctx, self, t) -> {
+                    Mc.setAttribute(self, Attributes.BLOCK_BREAK_SPEED, 4.0);
+                    ctx.effects().apply(self, new ActiveEffect("mine_faster", 121 * 20, null,
+                            p -> Mc.resetAttribute(p, Attributes.BLOCK_BREAK_SPEED, DEF_BREAK)));
+                    Mc.title(self, " ", translate(ctx, "3x Faster mining: 120 seconds"), ChatFormatting.WHITE, ChatFormatting.AQUA);
+                }).build());
+
+        add(DeathSwapItem.of(90, PURPLE, ChatFormatting.LIGHT_PURPLE,
+                "Make the game low-gravity: 3 minutes", "POV: You are Neil Armstrong")
+                .effect((ctx, self, t) -> {
+                    for (ServerPlayer p : ctx.game().alivePlayers()) {
+                        Mc.setAttribute(p, Attributes.GRAVITY, 0.008);
+                        Mc.setAttribute(p, Attributes.FALL_DAMAGE_MULTIPLIER, 0.0);
+                        // Re-evaluate each tick so the low gravity stops applying the
+                        // moment a player drops to spectator (e.g. they died before the
+                        // timer expired) and only ever affects live participants.
+                        ctx.effects().apply(p, new ActiveEffect("low_grav", 182 * 20, q -> {
+                            if (q.isSpectator()) {
+                                Mc.resetAttribute(q, Attributes.GRAVITY, DEF_GRAVITY);
+                                Mc.resetAttribute(q, Attributes.FALL_DAMAGE_MULTIPLIER, DEF_FALL);
+                            } else {
+                                Mc.setAttribute(q, Attributes.GRAVITY, 0.008);
+                                Mc.setAttribute(q, Attributes.FALL_DAMAGE_MULTIPLIER, 0.0);
+                            }
+                        }, q -> {
+                            Mc.resetAttribute(q, Attributes.GRAVITY, DEF_GRAVITY);
+                            Mc.resetAttribute(q, Attributes.FALL_DAMAGE_MULTIPLIER, DEF_FALL);
+                        }));
+                    }
+                    announce(ctx.game(), self, "Turned the game into a low-gravity environment", null, ChatFormatting.LIGHT_PURPLE);
+                }).build());
+        add(DeathSwapItem.of(91, LIME, ChatFormatting.YELLOW,
+                "Take NO fall damage for the next 5 minutes", "A pretty OP item, as the kids say")
+                .effect((ctx, self, t) -> {
+                    Mc.setAttribute(self, Attributes.FALL_DAMAGE_MULTIPLIER, 0.0);
+                    ctx.effects().apply(self, new ActiveEffect("no_fall_dam", 301 * 20,
+                            p -> p.fallDistance = 0.0f,
+                            p -> Mc.resetAttribute(p, Attributes.FALL_DAMAGE_MULTIPLIER, DEF_FALL)));
+                    Mc.title(self, " ", translate(ctx, ">> NO FALL DAMAGE! 5 Mins <<"), ChatFormatting.WHITE, ChatFormatting.YELLOW);
+                }).build());
+
+        add(DeathSwapItem.of(93, MAGENTA, ChatFormatting.GREEN,
+                "Summon a Stronghold below you", "Because the nearest regular one is 20 million blocks away")
+                .effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, 8, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, 35, o.getZ() + 20), Mc.light(4), Blocks.STONE);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, -25, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, -10, o.getZ() + 20), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.placeStructure(lvl, o, "stronghold");
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 3, o.getY() + 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 4, o.getY() - 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(-1, 0, 0), o.offset(-4, 1, 0), Mc.light(8), FillMode.ALL);
+                    Mc.birchSign(lvl, o.offset(-5, 0, 0), 12,
+                            new String[]{"Stronghold 据点", "| | | |", "| | | |", "V V V V"});
+                    Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, Component.literal(translate(ctx, "> Go down the ladder to reach the stronghold! (It's around y = at 30)"))
+                            .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
+
+        add(DeathSwapItem.of(94, ORANGE, ChatFormatting.WHITE,
+                "Give yourself a flint & steel & iron ingot", "Light it up, up up, light it up, up, up")
+                .effect((ctx, self, t) -> {
+                    Mc.give(self, Items.FLINT_AND_STEEL, 1);
+                    Mc.give(self, Items.IRON_INGOT, 1);
+                }).build());
+
+        add(DeathSwapItem.of(95, GREEN, ChatFormatting.GREEN,
+                "Put someone into Parkour Civilization (from Youtube)", "Evbo, noooooooo!")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
+                    BlockPos o = at(t);
+                    BlockState bars = Blocks.IRON_BARS.defaultBlockState();
+                    // One-shot: the bedrock-layer water floor and the iron-bar cell around the player.
+                    Mc.fill(lvl, new BlockPos(o.getX() + 26, -63, o.getZ() + 26),
+                            new BlockPos(o.getX() - 26, -63, o.getZ() - 26), Blocks.WATER, FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(1, 0, 1), o.offset(1, 0, -1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(-1, 0, 1), o.offset(-1, 0, -1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(0, 0, 1), o.offset(0, 0, 1), bars, FillMode.AIR_ONLY);
+                    Mc.fillState(lvl, o.offset(0, 0, -1), o.offset(0, 0, -1), bars, FillMode.AIR_ONLY);
+                    clearNightVisionAll(ctx);
+                    // Exact light-wall cage, built across ticks so it never freezes the server.
+                    ctx.game().addBuildJob(parkourJob(lvl, o.getX(), o.getZ()));
+                    announce(ctx.game(), self, "Spawned inside of Parkour Civilization:", t, ChatFormatting.GREEN);
+                }).build());
+
+        add(DeathSwapItem.of(96, CYAN, ChatFormatting.GREEN,
+                "Secretly spy on what someone's currently doing", "Cold War shenanigans in Minecraft")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> spy(ctx, self, t)).build());
+
+        add(DeathSwapItem.of(97, ORANGE, ChatFormatting.GOLD,
+                "Shield yourself from negative items: 2.5 mins", "Nobody can use any items on you for 2.5 minutes!")
+                .effect((ctx, self, t) -> shield(ctx, self, 151)).build());
+
+        add(DeathSwapItem.of(98, BROWN, ChatFormatting.GOLD,
+                "Block someone from using crafting tables: 90 sec", "Minecraft without the -craft")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ctx.effects().apply(t, new ActiveEffect("no_craft", 110 * 20, p -> {
+                        BlockPos o = p.blockPosition();
+                        ServerLevel lvl = Mc.level(p);
+                        net.minecraft.world.level.block.Block[] craftBlocks = {
+                                Blocks.CRAFTING_TABLE, Blocks.FURNACE, Blocks.BLAST_FURNACE, Blocks.CRAFTER};
+                        for (net.minecraft.world.level.block.Block b : craftBlocks) {
+                            // Three bands, matching misc/no_craft: y -1..7, y -2..-3, y -4..-5.
+                            replaceBlock(lvl, o.offset(-7, -1, -7), o.offset(7, 7, 7), b, Blocks.AIR);
+                            replaceBlock(lvl, o.offset(-7, -2, -7), o.offset(7, -3, 7), b, Blocks.AIR);
+                            replaceBlock(lvl, o.offset(-7, -4, -7), o.offset(7, -5, 7), b, Blocks.AIR);
+                        }
+                        // Also strip these out of the victim's inventory each tick (datapack
+                        // `clear @s minecraft:crafting_table` etc.) so they can't re-place one.
+                        var inv = p.getInventory();
+                        for (int s = 0; s < inv.getContainerSize(); s++) {
+                            ItemStack stack = inv.getItem(s);
+                            if (stack.is(Items.CRAFTING_TABLE) || stack.is(Items.FURNACE)
+                                    || stack.is(Items.BLAST_FURNACE) || stack.is(Items.CRAFTER)) {
+                                inv.setItem(s, ItemStack.EMPTY);
+                            }
+                        }
+                    }, null));
+                    Mc.title(t, " ", translate(ctx, "You can't use crafting tables & furnaces: 90 secs!"), ChatFormatting.WHITE, ChatFormatting.YELLOW);
+                    announce(ctx.game(), self, "Blocked crafting tables & furnaces for", t, ChatFormatting.YELLOW);
+                }).build());
+
+        add(DeathSwapItem.of(99, MAGENTA, ChatFormatting.AQUA,
+                "Gain a monster-proof forcefield: 3 mins", "Minus well just be peaceful mode for you")
+                .effect((ctx, self, t) -> {
+                    ctx.effects().apply(self, new ActiveEffect("mob_forcefield", 185 * 20, p -> {
+                        ServerLevel lvl = Mc.level(p);
+                        // misc/forcefield: hostile mobs within 3.2 (creepers 4.5, bees/ghasts
+                        // 3.2) and projectiles within 5.2 are killed each tick.
+                        AABB box = p.getBoundingBox().inflate(5.2);
+                        for (Entity e : lvl.getEntitiesOfClass(Entity.class, box)) {
+                            if (e instanceof net.minecraft.world.entity.ExperienceOrb
+                                || e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownExperienceBottle
+                                || e instanceof net.minecraft.world.entity.item.ItemEntity
+                                || e instanceof net.minecraft.world.entity.AreaEffectCloud
+                                || e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion tp && hasBeneficialEffect(tp.getItem())) {
+                                continue;
+                            }
+
+                            double d = e.distanceTo(p);
+                            if (e instanceof net.minecraft.world.entity.projectile.Projectile) {
+                                if (d <= 5.2) e.discard();
+                            } else if (e instanceof LivingEntity le) {
+                                if (e instanceof net.minecraft.world.entity.monster.Creeper) {
+                                    if (d <= 4.5) le.hurt(lvl.damageSources().magic(), 9999999f);
+                                } else if (e instanceof Monster
+                                        || e instanceof net.minecraft.world.entity.monster.Ghast
+                                        || e instanceof net.minecraft.world.entity.animal.bee.Bee) {
+                                    if (d <= 3.2) le.hurt(lvl.damageSources().magic(), 9999999f);
+                                }
+                            }
+                        }
+                        // Purple dust ring so the forcefield is visible (datapack particle).
+                        Vec3 c = p.position();
+                        int color = 0x7519FF;
+                        Mc.dust(lvl, c.x + 2.2, c.y + 1, c.z, color, 1.2f, 1, 0.1, 0.1, 1.2);
+                        Mc.dust(lvl, c.x - 2.2, c.y + 1, c.z, color, 1.2f, 1, 0.1, 0.1, 1.2);
+                        Mc.dust(lvl, c.x, c.y + 1, c.z + 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
+                        Mc.dust(lvl, c.x, c.y + 1, c.z - 2.2, color, 1.2f, 1, 1.2, 0.1, 0.1);
+                    }, null));
+                    Mc.title(self, " ", translate(ctx, ">> Forcefield: 3 minutes! <<"), ChatFormatting.WHITE, ChatFormatting.LIGHT_PURPLE);
+                }).build());
+
+        add(DeathSwapItem.of(100, GREEN, ChatFormatting.GREEN,
+                "Spawn a Giant zombie on someone", "These Giants were real mobs until around 1.8")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    Entity bigZombie = Mc.summonRelSafe(t, EntityTypes.ZOMBIE, -5, -5);
+                    if (bigZombie instanceof LivingEntity le) {
+                        var scale = le.getAttribute(Attributes.SCALE);
+                        if (scale != null) scale.setBaseValue(16.0);
+                    }
+                    clearNightVisionAll(ctx);
+                    announce(ctx.game(), self, "Summoned a Giant zombie on", t, ChatFormatting.GREEN);
+                }).build());
+
+        add(DeathSwapItem.of(101, LIME, ChatFormatting.GREEN,
+                "Place a Trial Chamber below you", "This is why Lena Raine joined Mojang")
+                .effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, 8, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, 35, o.getZ() + 20), Mc.light(4), Blocks.STONE);
+                    Mc.fillReplace(lvl, new BlockPos(o.getX() - 20, -16, o.getZ() - 20),
+                            new BlockPos(o.getX() + 20, -10, o.getZ() + 20), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.placeStructure(lvl, o, "trial_chambers");
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 3, o.getY() + 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(o.getX() - 4, o.getY() - 1, o.getZ()),
+                            new BlockPos(o.getX() - 4, -60, o.getZ() + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(-1, 0, 0), o.offset(-4, 1, 0), Mc.light(8), FillMode.ALL);
+                    Mc.birchSign(lvl, o.offset(-5, 0, 0), 12,
+                            new String[]{"Trial Chamber", "审判分庭", "| | | |", "V V V V"});
+                    Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, Component.literal(translate(ctx, "> Go down the ladder and you'll find the Trial Chamber! (It's around y = at 30)"))
+                            .withStyle(s -> s.withColor(ChatFormatting.GREEN).withBold(true)));
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
+
+        add(DeathSwapItem.of(102, BROWN, ChatFormatting.YELLOW,
+                "Build a Woodland Mansion where you are", "The #1 target for arsonists")
+                .effect((ctx, self, t) -> {
+                    Mc.placeStructure(Mc.level(self), at(self), "mansion");
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, translate(ctx, ">> A Woodland Mansion was built near you!"), ChatFormatting.YELLOW);
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
+
+        add(DeathSwapItem.of(103, YELLOW, ChatFormatting.YELLOW,
+                "Make someone continuously pee: 1 min", "How much did they have to drink??")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    // misc/is_peeing: each tick place flowing water (level 2) at the
+                    // player's feet — the visible pee stream. (The old version only
+                    // played a quiet splash sound, so it appeared to do nothing.)
+                    ctx.effects().apply(t, new ActiveEffect("is_peeing", 61 * 20, p -> {
+                        // Repaint the ds:pee_water biome (yellow water_color) every 10 ticks
+                        // so vanilla water rendering shows yellow; the biome change persists
+                        // in the chunk but the world resets between rounds anyway.
+                        ServerLevel lvl = Mc.level(p);
+                        BlockPos feet = p.blockPosition();
+                        if (lvl.getBlockState(feet).isAir()) {
+                            Mc.setState(lvl, feet, Mc.flowingWater(2));
+                        }
+                        if (p.tickCount % 10 == 0) {
+                            Mc.fillBiome(lvl, feet.offset(-2, -2, -2), feet.offset(2, 2, 2),
+                                    Identifier.fromNamespaceAndPath("ds", "pee_water"));
+                        }
+                    }, null));
+                    Mc.title(t, " ", translate(ctx, "You are peeing..."), ChatFormatting.WHITE, ChatFormatting.YELLOW);
+                    Mc.playSound(t, SoundEvents.PLAYER_SPLASH, 99f, 1.6f);
+                    announce(ctx.game(), self, "Made continuously pee for 1 minute:", t, ChatFormatting.YELLOW);
+                }).build());
+
+        add(DeathSwapItem.of(104, MAGENTA, ChatFormatting.LIGHT_PURPLE,
+                "Get an enchanting table, lapis, & XP", "The full enchanting set!")
+                .effect((ctx, self, t) -> {
+                    Mc.give(self, Items.ENCHANTING_TABLE, 1);
+                    Mc.give(self, Items.LAPIS_LAZULI, 32);
+                    Mc.give(self, Items.EXPERIENCE_BOTTLE, 32);
+                }).build());
+
+        add(DeathSwapItem.of(105, CYAN, ChatFormatting.LIGHT_PURPLE,
+                "Summon the Warden on someone", "Deep Dark Edition")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    Entity w = Mc.summonRel(t, EntityTypes.WARDEN, 0, 0, 0);
+                    if (w instanceof net.minecraft.world.entity.Mob m) m.setPersistenceRequired();
+                    Mc.title(t, " ", translate(ctx, ">> warden.. <<"), ChatFormatting.WHITE, ChatFormatting.DARK_AQUA);
+                    announce(ctx.game(), self, "Summoned the Warden on", t, ChatFormatting.LIGHT_PURPLE);
+                }).build());
+
+        add(DeathSwapItem.of(106, RED, ChatFormatting.RED,
+                "Teleport someone directly to the Nether", "A Throwback to 1.16")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel nether = ctx.server().getLevel(Level.NETHER);
+                    if (nether != null) {
+                        double nx = t.getX() / 8.0, nz = t.getZ() / 8.0;
+                        BlockPos p = BlockPos.containing(nx, 64, nz);
+                        // Force the destination chunk to load before building the pad.
+                        nether.getChunk(p.getX() >> 4, p.getZ() >> 4);
+                        // 106tp_nether: a netherrack floor and a carved light[level=10]
+                        // pocket above it, so the player lands in air instead of inside
+                        // the netherrack/terrain at y64.
+                        Mc.fill(nether, p.offset(-2, -1, -2), p.offset(2, -1, 2), Blocks.NETHERRACK, FillMode.ALL);
+                        Mc.fillState(nether, p.offset(-1, 0, -1), p.offset(1, 3, 1), Mc.light(10), FillMode.ALL);
+                        Mc.teleportTo(t, nether, nx, 64.5, nz, t.getYRot(), t.getXRot());
+                    }
+                    announce(ctx.game(), self, "Teleported directly to the Nether:", t, ChatFormatting.RED);
+                }).build());
+
+        add(DeathSwapItem.of(107, RED, ChatFormatting.RED,
+                "Summon Oppenheimer's NUCLEAR bomb on someone", "Now you are become death, destroyer of Minecrafts")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    // The datapack nuke is TNT with explosion_power:40 (the entity's
+                    // power field has no setter, so summon via command like the datapack
+                    // does — a plain primed-TNT entity only explodes at power 4).
+                    String nbt = "{fuse:180,explosion_power:40,Tags:[\"ent\"]}";
+                    for (String pos : new String[]{"~ ~1 ~", "~2 ~1 ~", "~-2 ~1 ~", "~ ~1 ~2", "~ ~1 ~-2"}) {
+                        Mc.runAt(t, "summon tnt " + pos + " " + nbt);
+                    }
+                    Mc.title(t, translate(ctx, ">> NUKE!!! <<"), translate(ctx, "Explodes in 12 secs -- RUN!!"), ChatFormatting.GOLD, ChatFormatting.RED);
+                    announce(ctx.game(), self, "Summoned the Oppenheimer nuclear bomb on", t, ChatFormatting.RED);
+                }).build());
+
+        add(DeathSwapItem.of(108, CYAN, ChatFormatting.WHITE,
+                "Summon an Ancient City below you", "Now you are become death, destroyer of Minecrafts")
+                .effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(self);
+                    BlockPos o = at(self);
+                    int x = o.getX(), z = o.getZ();
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -52, z - 48), new BlockPos(x + 48, -48, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -47, z - 48), new BlockPos(x + 48, -45, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -44, z - 48), new BlockPos(x + 48, -42, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.fillReplace(lvl, new BlockPos(x - 48, -41, z - 48), new BlockPos(x + 48, -38, z + 48), Mc.light(4), Blocks.DEEPSLATE);
+                    Mc.placeStructure(lvl, o, "ancient_city");
+                    Mc.fillState(lvl, new BlockPos(x - 3, o.getY() + 1, z), new BlockPos(x - 4, 0, z + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(x - 3, -1, z), new BlockPos(x - 4, -54, z + 1), Blocks.AIR.defaultBlockState(), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(x - 4, o.getY() - 1, z), new BlockPos(x - 4, 0, z + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, new BlockPos(x - 4, -1, z), new BlockPos(x - 4, -54, z + 1), Mc.ladder(Direction.EAST), FillMode.ALL);
+                    Mc.fillState(lvl, o.offset(-1, 0, 0), o.offset(-4, 1, 0), Mc.light(8), FillMode.ALL);
+                    Mc.birchSign(lvl, o.offset(-5, 0, 0), 12,
+                            new String[]{"Ancient City", "古城", "| | | |", "V V V V"});
+                    Mc.setState(lvl, o.offset(-5, 1, 0), Blocks.AIR.defaultBlockState());
+                    Mc.setYaw(self, 90);
+                    clearNightVisionAll(ctx);
+                    Mc.msg(self, Component.literal(translate(ctx, "> Go down the ladder and you'll find the Ancient City! (May not have spawned if in the Nether or the End!)"))
+                            .withStyle(s -> s.withColor(ChatFormatting.YELLOW).withBold(true)));
+                    Mc.playSound(self, SoundEvents.STONE_BREAK, 9f, 1.0f);
+                }).build());
+
+        add(DeathSwapItem.of(109, ORANGE, ChatFormatting.YELLOW,
+                "Set everything around someone on fire", "We didn't start the fire...")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    ServerLevel lvl = Mc.level(t);
+                    BlockPos o = at(t);
+                    BlockState fire = Blocks.FIRE.defaultBlockState();
+                    // Four side quadrants (leaving the player's column), y -1..8, replacing air then light.
+                    Mc.fillReplace(lvl, o.offset(-10, -1, -10), o.offset(-2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(2, -1, -10), o.offset(10, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, -10), o.offset(2, 8, -2), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, 2), o.offset(2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-10, -1, -10), o.offset(-2, 8, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(2, -1, -10), o.offset(10, 8, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, -10), o.offset(2, 8, -2), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -1, 2), o.offset(2, 8, 10), fire, Blocks.LIGHT);
+                    // Lower band y -5..8 (air) then y -5..-2 (light).
+                    Mc.fillReplace(lvl, o.offset(-10, -5, -10), o.offset(-2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(2, -5, -10), o.offset(10, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, -10), o.offset(2, 8, -2), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, 2), o.offset(2, 8, 10), fire, Blocks.AIR);
+                    Mc.fillReplace(lvl, o.offset(-10, -5, -10), o.offset(-2, -2, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(2, -5, -10), o.offset(10, -2, 10), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, -10), o.offset(2, -2, -2), fire, Blocks.LIGHT);
+                    Mc.fillReplace(lvl, o.offset(-2, -5, 2), o.offset(2, -2, 10), fire, Blocks.LIGHT);
+                    clearNightVisionAll(ctx);
+                    announce(ctx.game(), self, "Set everything on fire around", t, ChatFormatting.YELLOW);
+                }).build());
+
+        add(DeathSwapItem.of(110, PURPLE, ChatFormatting.LIGHT_PURPLE,
+                "Spawn 100 Endermen on someone", "We didn't start the fire...")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) ->
+                        spawnHorde(ctx, self, t, EntityTypes.ENDERMAN, "Spawned 100 Endermen at")).build());
+
+        add(DeathSwapItem.of(111, YELLOW, ChatFormatting.YELLOW,
+                "Spawn 3 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
+                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                    for (int i = 0; i < 3; i++) {
+                        double angle = 2 * Math.PI * i / 3;
+                        double r = 1.5 + Math.random();
+                        double dx = Math.cos(angle) * r;
+                        double dz = Math.sin(angle) * r;
+                        var chicken = Mc.summonRel(t, EntityTypes.CHICKEN, dx, 3.0, dz);
+                        if (chicken == null) continue;
+                        chicken.setPersistenceRequired();
+                        var zombie = Mc.summonRel(t, EntityTypes.ZOMBIE, dx, 3.0, dz);
+                        if (zombie != null) {
+                            zombie.setBaby(true);
+                            zombie.setPersistenceRequired();
+                            zombie.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.LEATHER_HELMET));
+                            zombie.startRiding(chicken);
+                        }
+                    }
+                    Mc.titleTimes(t, 5, 60, 15);
+                    Mc.title(t, translate(ctx, "CHICKEN JOCKEYYYYYY"), " ", ChatFormatting.YELLOW, ChatFormatting.WHITE);
+                    announce(ctx.game(), self, "Spawned 3 chicken jockeys on", t, ChatFormatting.YELLOW);
+                }).build());
     }
 
     // ---- effect helpers ----
