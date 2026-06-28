@@ -1,0 +1,406 @@
+package com.deathswap.items;
+
+import com.deathswap.game.GameManager;
+import com.deathswap.game.PlayerData;
+import com.deathswap.util.Mc;
+import com.deathswap.util.Translator;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemLore;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Offers the "choice of 3 items" to players, detects the drop that selects one,
+ * resolves the target, and dispatches the effect. Reimplements
+ * {@code items/give_items}, {@code items/*detect_item}, the {@code select}
+ * trigger flow and {@code items/after_use}.
+ */
+public final class ItemManager {
+
+    private static final String NBT_ITEM_ID = "ds_item_id";
+    private static final String NBT_LOCKED = "ds_locked";
+    private static final int[] HOTBAR_SLOTS = { 6, 7, 8 };
+
+    private final GameManager game;
+    private final ItemRegistry registry = new ItemRegistry();
+
+    /**
+     * Round-robin pointer over alive players for the "one offer per interval"
+     * clock.
+     */
+    private int rotation = 0;
+
+    public ItemManager(GameManager game) {
+        this.game = game;
+    }
+
+    public void registerAll() {
+        registry.registerAll();
+    }
+
+    public void tick() {
+        // Keep the three powerup slots locked with filler whenever a player isn't
+        // mid-choice, so they can't be used for storage and the offer always lands
+        // in a predictable place.
+        for (ServerPlayer player : game.alivePlayers()) {
+            maintainLockedSlots(player);
+        }
+    }
+
+    // ---- offering ----
+
+    /**
+     * Hand a fresh set of items to the next player in rotation. The datapack
+     * offers to exactly one player per interval (round-robin), not everyone at
+     * once — offering to all is what made items feel far too frequent.
+     */
+    public void offerNext() {
+        List<ServerPlayer> alive = new ArrayList<>(game.alivePlayers());
+        if (alive.isEmpty()) {
+            return;
+        }
+        alive.sort(java.util.Comparator.comparingInt(p -> game.data(p).permPNo));
+        rotation = (rotation + 1) % alive.size();
+        ServerPlayer player = alive.get(rotation);
+        if (game.effects().hasEffect(player.getUUID(), "blockedItems")) {
+            Mc.msg(player, com.deathswap.game.Messages.itemsBlocked(game.settings().isDutch()));
+            return;
+        }
+        offer(player);
+    }
+
+    public void offer(ServerPlayer player) {
+        PlayerData data = game.data(player);
+        List<DeathSwapItem> picks = registry.pickThree(player, player.getRandom().nextLong());
+        if (picks.size() < 3) {
+            return;
+        }
+        data.offeredItems = picks.toArray(new DeathSwapItem[0]);
+        data.choosingItem = true;
+        data.pendingTargetItem = null;
+
+        for (int i = 0; i < HOTBAR_SLOTS.length; i++) {
+            player.getInventory().setItem(HOTBAR_SLOTS[i], buildDye(picks.get(i)));
+        }
+        boolean nl = game.settings().isDutch();
+        Mc.titleRaw(player, Component.literal(" "), com.deathswap.game.Messages.newItemsSubtitle(nl));
+        Mc.msg(player, com.deathswap.game.Messages.newItemsChat(nl));
+        Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
+    }
+
+    // ---- locked powerup slots ----
+
+    /**
+     * Force the three powerup slots to hold an immovable filler item whenever the
+     * player isn't actively choosing from an offer, and remove any filler that
+     * leaked into another slot. Re-running every tick is what makes it "immovable":
+     * anything the player drops in is overwritten, and the filler always returns.
+     */
+    private void maintainLockedSlots(ServerPlayer player) {
+        boolean choosing = game.data(player).choosingItem;
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (isPowerupSlot(slot)) {
+                // While choosing, the dye offer occupies these slots — leave it be.
+                if (!choosing && !isLocked(stack)) {
+                    inventory.setItem(slot, buildLockedFiller());
+                }
+            } else if (isLocked(stack)) {
+                inventory.setItem(slot, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    private static boolean isPowerupSlot(int slot) {
+        for (int s : HOTBAR_SLOTS) {
+            if (s == slot) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True for the immovable barrier filler that occupies the powerup slots. */
+    public static boolean isLocked(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data != null && data.copyTag().getBooleanOr(NBT_LOCKED, false);
+    }
+
+    /** The useless, immovable placeholder that sits in the powerup slots. */
+    private ItemStack buildLockedFiller() {
+        ItemStack stack = new ItemStack(Items.BARRIER);
+        stack.set(DataComponents.CUSTOM_NAME,
+                Component.literal(Translator.translate(game.settings().isDutch(), "Powerup slot — items appear here"))
+                        .withStyle(ChatFormatting.DARK_GRAY).withStyle(s -> s.withItalic(false)));
+        CompoundTag tag = new CompoundTag();
+        tag.putBoolean(NBT_LOCKED, true);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        return stack;
+    }
+
+    /**
+     * Admin helper: give a player a single death-swap item by its id, ready to
+     * use. Places the dyed display stack in the first offer slot and arms the
+     * choosing state so dropping it fires the effect (or opens target selection).
+     * Returns false if no item has that id.
+     */
+    public boolean giveById(ServerPlayer player, int id) {
+        DeathSwapItem item = registry.byId(id);
+        if (item == null) {
+            return false;
+        }
+        PlayerData data = game.data(player);
+        data.offeredItems = new DeathSwapItem[] { item };
+        data.choosingItem = true;
+        data.pendingTargetItem = null;
+        player.getInventory().setItem(HOTBAR_SLOTS[0], buildDye(item));
+        boolean nl = game.settings().isDutch();
+        String name = Translator.translate(nl, item.name);
+        Mc.msg(player, Translator.translate(nl, "Given item #") + id + " (" + name
+                + Translator.translate(nl, ") -- drop it to use."),
+                ChatFormatting.GREEN);
+        Mc.playSound(player, SoundEvents.ITEM_PICKUP, 9.0f, 1.0f);
+        return true;
+    }
+
+    /** Highest registered item id (ids run 1..N). */
+    public int maxItemId() {
+        return registry.size();
+    }
+
+    /** Build the dyed display item exactly as the datapack's items/items/* do. */
+    private ItemStack buildDye(DeathSwapItem item) {
+        ItemStack stack = new ItemStack(Items.DYE.asList().get(item.dye.ordinal()));
+        // Show the Dutch name in Dutch mode (datapack ch_detect_item names).
+        String displayName = Translator.translate(game.settings().isDutch(), item.name);
+        stack.set(DataComponents.CUSTOM_NAME,
+                Component.literal(displayName).withStyle(item.nameColor).withStyle(s -> s.withItalic(false)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
+                Component.literal(item.lore).withStyle(ChatFormatting.GRAY))));
+        stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+        CompoundTag tag = new CompoundTag();
+        tag.putInt(NBT_ITEM_ID, item.id);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        return stack;
+    }
+
+    private static int itemIdOf(ItemStack stack) {
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        if (data == null) {
+            return -1;
+        }
+        // 26.2 uses the Optional-based NBT API; getIntOr returns a primitive with a
+        // default.
+        return data.copyTag().getIntOr(NBT_ITEM_ID, -1);
+    }
+
+    // ---- selection (drop) ----
+
+    /**
+     * Called from the drop mixin. Returns true if the stack was a death-swap
+     * offer item (in which case the real drop is cancelled).
+     */
+    public boolean onItemTriggered(ServerPlayer player, ItemStack stack) {
+        // A dropped filler is a no-op: swallow it so the powerup slot just refills.
+        if (isLocked(stack)) {
+            return true;
+        }
+        int id = itemIdOf(stack);
+        if (id < 0) {
+            return false;
+        }
+        PlayerData data = game.data(player);
+        DeathSwapItem item = registry.byId(id);
+        if (item == null || !data.choosingItem) {
+            clearOfferStacks(player);
+            return true;
+        }
+        // Enforce the "blocked items" effect (item 56) at the moment of use, not
+        // just when offering. A blocked player may still be holding an offer (or
+        // be handed one), so swallow the use here rather than firing the effect.
+        if (game.effects().hasEffect(player.getUUID(), "blockedItems")) {
+            clearOfferStacks(player);
+            data.clearOffer();
+            Mc.msg(player, Translator.translate(game.settings().isDutch(),
+                    "** You can't use items right now!"), ChatFormatting.RED);
+            return true;
+        }
+        clearOfferStacks(player);
+        data.choosingItem = false;
+
+        switch (item.target) {
+            case SELF, EVERYONE -> {
+                applyEveryoneOrSelf(item, player);
+                afterUse(player);
+            }
+            case ALL_OTHERS -> {
+                for (ServerPlayer other : game.alivePlayers()) {
+                    if (other != player) {
+                        fire(item, player, other);
+                    }
+                }
+                afterUse(player);
+            }
+            case RANDOM_OPPONENT -> {
+                ServerPlayer victim = randomOpponent(player);
+                if (victim != null) {
+                    fire(item, player, victim);
+                } else {
+                    Mc.msg(player, Translator.translate(game.settings().isDutch(),
+                            ">> All opponents are shielded! Item had no effect. <<"), ChatFormatting.RED);
+                }
+                afterUse(player);
+            }
+            case OPPONENT -> {
+                data.pendingTargetItem = item;
+                promptForTarget(player, item);
+            }
+        }
+        return true;
+    }
+
+    private void applyEveryoneOrSelf(DeathSwapItem item, ServerPlayer player) {
+        if (item.target == ItemTarget.EVERYONE) {
+            for (ServerPlayer p : game.alivePlayers()) {
+                fire(item, player, p);
+            }
+        } else {
+            fire(item, player, player);
+        }
+    }
+
+    private void fire(DeathSwapItem item, ServerPlayer self, ServerPlayer target) {
+        item.effect.apply(new ItemContext(game.server(), game, game.effects()), self, target);
+    }
+
+    private ServerPlayer randomOpponent(ServerPlayer self) {
+        List<ServerPlayer> opponents = new ArrayList<>(game.alivePlayers());
+        opponents.remove(self);
+        opponents.removeIf(p -> game.effects().hasEffect(p.getUUID(), "shield"));
+        if (opponents.isEmpty()) {
+            return null;
+        }
+        return opponents.get(self.getRandom().nextInt(opponents.size()));
+    }
+
+    // ---- targeting (opponent items) ----
+
+    /**
+     * Re-sends the target-selection prompt for a player who is still waiting to
+     * pick a target. Called by the message mixin whenever a non-prompt message
+     * lands in that player's chat, keeping the prompt pinned to the bottom.
+     */
+    public void repromptTarget(ServerPlayer player) {
+        PlayerData data = game.data(player);
+        if (data == null || data.pendingTargetItem == null || data.sendingTargetPrompt) return;
+        promptForTarget(player, data.pendingTargetItem);
+    }
+
+    private void promptForTarget(ServerPlayer player, DeathSwapItem item) {
+        PlayerData data = game.data(player);
+        data.sendingTargetPrompt = true;
+        try {
+            Mc.msg(player, Component.literal(Translator.translate(game.settings().isDutch(),
+                    "\n>> Click on which player you want to use this item on: "))
+                    .withStyle(ChatFormatting.YELLOW)
+                    .append(Component.literal(Translator.translate(game.settings().isDutch(), item.name))
+                            .withStyle(ChatFormatting.AQUA)));
+
+            // Every alive player is listed by their permanent number (yourself
+            // included, as in the datapack's select_template). Shielded players are
+            // shown struck-through but are NOT offered as a clickable option — except
+            // yourself, who can always be targeted (a shield blocks others' items, not
+            // your own).
+            MutableComponent line = Component.literal("");
+            MutableComponent shieldedNote = Component.literal("");
+            boolean anyShielded = false;
+            for (ServerPlayer p : game.alivePlayers()) {
+                boolean shielded = game.effects().hasEffect(p.getUUID(), "shield")
+                        && !p.getUUID().equals(player.getUUID());
+                MutableComponent chip = Component.literal("[ " + p.getName().getString() + " ]  ");
+                if (shielded) {
+                    chip.withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.STRIKETHROUGH);
+                    if (anyShielded) {
+                        shieldedNote.append(Component.literal(", "));
+                    }
+                    shieldedNote.append(Component.literal(p.getName().getString()));
+                    anyShielded = true;
+                } else {
+                    chip.withStyle(Style.EMPTY.withColor(ChatFormatting.DARK_AQUA)
+                            .withClickEvent(new ClickEvent.RunCommand("/deathswap target " + game.data(p).permPNo)));
+                }
+                line.append(chip);
+            }
+            Mc.msg(player, line);
+            if (anyShielded) {
+                Mc.msg(player, shieldedNote.withStyle(ChatFormatting.ITALIC)
+                        .append(Component.literal(Translator.translate(game.settings().isDutch(),
+                                " is/are shielded from items!")).withStyle(ChatFormatting.YELLOW)));
+            }
+        } finally {
+            data.sendingTargetPrompt = false;
+        }
+    }
+
+    /** Invoked by the /deathswap target command (the clicked chip). */
+    public void onTargetSelected(ServerPlayer player, int permNo) {
+        PlayerData data = game.data(player);
+        DeathSwapItem item = data.pendingTargetItem;
+        if (item == null) {
+            return;
+        }
+        ServerPlayer target = game.playerByPermNo(permNo);
+        // Shielded/eliminated players aren't offered as options; guard anyway and
+        // keep the item pending so a valid chip can still be clicked. You can
+        // always target yourself, even while shielded.
+        boolean shieldedOther = target != null
+                && !target.getUUID().equals(player.getUUID())
+                && game.effects().hasEffect(target.getUUID(), "shield");
+        if (target == null || shieldedOther) {
+            Mc.msg(player, Translator.translate(game.settings().isDutch(),
+                    ">> That player can't be targeted. <<"), ChatFormatting.RED);
+            return;
+        }
+        data.pendingTargetItem = null;
+        fire(item, player, target);
+        afterUse(player);
+    }
+
+    // ---- cleanup ----
+
+    private void clearOfferStacks(ServerPlayer player) {
+        // Lock ALL three powerup slots with filler immediately, not just the ones
+        // still holding a dye. The slot the player just dropped from is already
+        // EMPTY (vanilla removes the stack before the drop event), so leaving it
+        // empty let an item-giving powerup's Inventory.add land a reward there —
+        // which the next maintainLockedSlots tick then overwrote with filler,
+        // silently erasing it. Occupying every powerup slot up front forces given
+        // items to land in real inventory slots.
+        for (int slot : HOTBAR_SLOTS) {
+            player.getInventory().setItem(slot, buildLockedFiller());
+        }
+    }
+
+    private void afterUse(ServerPlayer player) {
+        PlayerData data = game.data(player);
+        data.clearOffer();
+        Mc.playSound(player, SoundEvents.PLAYER_LEVELUP, 0.5f, 1.5f);
+    }
+
+    public boolean isOfferStack(ItemStack stack) {
+        return itemIdOf(stack) >= 0 || isLocked(stack);
+    }
+}
