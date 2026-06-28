@@ -237,7 +237,7 @@ public final class ItemRegistry {
     public void registerAll() {
         add(DeathSwapItem.of(1, LIGHT_BLUE, ChatFormatting.AQUA,
                 "Give a player speed 1 billion: 40 secs", "Even the Flash can't keep up with this level of speed")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.effect(t, MobEffects.SPEED, 42, 0);
                     Mc.setAttribute(t, Attributes.MOVEMENT_SPEED, 5.5);
                     ctx.effects().apply(t, new ActiveEffect("mega_speed", 41 * 20, null,
@@ -258,7 +258,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(4, PURPLE, ChatFormatting.LIGHT_PURPLE,
                 "Teleport someone to the End", "Lets beat Minecraft!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel end = ctx.server().getLevel(Level.END);
                     if (end != null) {
                         double posX = 100.5, posY = 49, posZ = 0.5;
@@ -280,7 +280,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(6, PINK, ChatFormatting.LIGHT_PURPLE,
                 "Teleport someone really far away", "Is someones trap too good? Teleport them away from it!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     // A punishment teleport must NOT move the player's spawn point — only
                     // the initial game-start spread does that, so a later death still
                     // returns them to their original spread location.
@@ -306,7 +306,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(8, BROWN, ChatFormatting.GOLD,
                 "Spawn 100 villagers on someone", "It's my party and I'll cry if I want too...")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) ->
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) ->
                         spawnHorde(ctx, self, t, EntityTypes.VILLAGER, "Spawned 100 villagers at")).build());
 
         add(DeathSwapItem.of(9, LIGHT_GRAY, ChatFormatting.GOLD,
@@ -335,7 +335,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(10, BLUE, ChatFormatting.BLUE,
                 "Teleport someone to the middle of the ocean", "If Tom Hanks could survive it, then anyone can")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     // The datapack hard-codes far coordinates that aren't guaranteed to be
                     // ocean; instead locate a real ocean biome (native /locate biome).
                     ServerLevel ow = ctx.server().overworld();
@@ -347,7 +347,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(11, LIME, ChatFormatting.GREEN,
                 "Disable a player's ability to jump: 60 secs", "Must've eaten too much McDonald's")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.setAttribute(t, Attributes.JUMP_STRENGTH, 0.0);
                     ctx.effects().apply(t, new ActiveEffect("jump_disabled", 61 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.JUMP_STRENGTH, DEF_JUMP)));
@@ -378,7 +378,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(14, RED, ChatFormatting.GOLD,
                 "Spawn TNT on someone", "They won't expect it!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     primeTnt(Mc.level(t), t.position(), 0, 1, 0, (byte) 85);
                     Mc.title(t, translate(ctx, "RUN away!"), "", ChatFormatting.RED, ChatFormatting.WHITE);
                     announce(ctx.game(), self, "Spawned ignited TNT on", t, ChatFormatting.RED);
@@ -386,7 +386,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(15, WHITE, ChatFormatting.WHITE,
                 "Place a 7x7x7 cube of air on someone", "All blocks in a 3-block radius of them turns to air!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     Mc.destroyBox(Mc.level(t), o.offset(3, 3, 3), o.offset(-3, -3, -3));
                     announce(ctx.game(), self, "Placed a 7x7x7 cube of air, deleting all blocks on", t, ChatFormatting.WHITE);
@@ -394,7 +394,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(16, ORANGE, ChatFormatting.YELLOW,
                 "Teleport someone to y= -60", "Way down, Hadestown...")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     Mc.fill(lvl, new BlockPos(o.getX() + 2, -62, o.getZ() + 2),
@@ -437,7 +437,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(20, WHITE, ChatFormatting.WHITE,
                 "Trap a player in a barrier block cage", "To say they'll be pissed is a gross understatement")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     Mc.fill(Mc.level(t), o.offset(4, 3, 4), o.offset(-4, -2, -4), Blocks.BARRIER, FillMode.HOLLOW);
                     Mc.setBlock(Mc.level(t), o.offset(0, -1, 0), Blocks.TORCH);
@@ -446,7 +446,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(21, GREEN, ChatFormatting.GREEN,
                 "Give a player motion sickness: 30 seconds", "Bro drove through the Rocky Mountains")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("motion_sick", 46 * 20,
                             p -> Mc.rotateRelative(p, 10f, 0.1f), null));
                     announce(ctx.game(), self, "Gave motion sickness to", t, ChatFormatting.DARK_GREEN);
@@ -454,7 +454,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(22, LIGHT_GRAY, ChatFormatting.WHITE,
                 "Turn all nearby blocks of a player to stone", "The stone age comes to Minecraft")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     replaceTagged(lvl, o.offset(12, 6, 12), o.offset(-1, -6, -12), Blocks.STONE.defaultBlockState());
@@ -464,7 +464,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(23, BROWN, ChatFormatting.GOLD,
                 "Put a curse of binding leather chestplate on someone", "Thanks Mojang for adding curse of binding...")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ItemStack chest = new ItemStack(Items.LEATHER_CHESTPLATE);
                     Mc.enchant(t, chest, Enchantments.BINDING_CURSE, 1);
                     chest.set(net.minecraft.core.component.DataComponents.UNBREAKABLE, net.minecraft.util.Unit.INSTANCE);
@@ -504,7 +504,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(25, GRAY, ChatFormatting.WHITE,
                 "Make someone leave a bedrock trail: 40 secs", "Wherever they walk, the blocks below them turn to bedrock.")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("bedrock_trail", 72 * 20, p -> {
                         // Lay one bedrock block directly below the player's feet, without
                         // neighbour/light updates (a per-tick full update is what tanked the
@@ -543,7 +543,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(26, GRAY, ChatFormatting.WHITE,
                 "Give someone blindness & darkness: 40 secs", "Hey, who turned out the lights??")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.effect(t, MobEffects.DARKNESS, 41, 5);
                     Mc.effect(t, MobEffects.BLINDNESS, 41, 5);
                     announce(ctx.game(), self, "Gave blindness & darkness to", t, ChatFormatting.WHITE);
@@ -578,7 +578,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(32, LIGHT_GRAY, ChatFormatting.WHITE,
                 "Spawn falling anvils above someone", "A worse concussion than in NFL Football")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     Mc.fill(lvl, o, o.offset(0, 1, 0), Blocks.AIR, FillMode.ALL);
@@ -592,7 +592,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(33, CYAN, ChatFormatting.AQUA,
                 "Put someone in adventure mode: 40 secs", "Minecraft without the 'mine' part")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.setAttribute(t, Attributes.BLOCK_INTERACTION_RANGE, 0.0);
                     ctx.effects().apply(t, new ActiveEffect("no_interaction", 40 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.BLOCK_INTERACTION_RANGE, DEF_INTERACT)));
@@ -602,7 +602,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(34, YELLOW, ChatFormatting.AQUA,
                 "Place bells all around someone", "Ring Ring Ring Ring Ring Bing Ring Ring Ring (x1000)")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     Mc.fill(Mc.level(t), o.offset(14, 6, 14), o.offset(-14, -6, -14), Blocks.BELL, FillMode.AIR_ONLY);
                     clearNightVisionAll(ctx);
@@ -611,7 +611,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(35, ORANGE, ChatFormatting.GOLD,
                 "Place a layer of lava above someone", "La-la-la lava...")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     Mc.fill(lvl, o, o.offset(0, 1, 0), Blocks.AIR, FillMode.ALL);
@@ -622,7 +622,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(36, YELLOW, ChatFormatting.GOLD,
                 "Spawn a horde of bees around someone", "Good thing bee allergies are rare.. right?")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.summonRel(t, EntityTypes.BEE, 0, 0, 0);
                     spawnOverTime(ctx, t, EntityTypes.BEE, 25, 4);
                     announce(ctx.game(), self, "Summoned a horde of bees around", t, ChatFormatting.YELLOW);
@@ -642,7 +642,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(38, PURPLE, ChatFormatting.LIGHT_PURPLE,
                 "Teleport to someone (& surprise attack them?)", "It would indeed be a deadly swap")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.teleportTo(self, Mc.level(t), t.getX(), t.getY(), t.getZ(), self.getYRot(), self.getXRot());
                     announce(ctx.game(), self, "Teleported to", t, ChatFormatting.LIGHT_PURPLE);
                 }).build());
@@ -653,7 +653,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(40, ORANGE, ChatFormatting.GOLD,
                 "Strike someone with lightning", "Statistically unlikely to survive")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.summonRel(t, EntityTypes.LIGHTNING_BOLT, 0, 0, 0);
                     Mc.summonRel(t, EntityTypes.LIGHTNING_BOLT, 0, 2, 0);
                     Mc.setBlock(Mc.level(t), at(t), Blocks.FIRE);
@@ -662,7 +662,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(41, ORANGE, ChatFormatting.YELLOW,
                 "Put a pumpkin head on someone: 1 min", "Experience Minecraft like Jack from Nightmare Before Xmas")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     t.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, new ItemStack(Items.CARVED_PUMPKIN));
                     ctx.effects().apply(t, new ActiveEffect("pumpkin_head", 61 * 20, null,
                             p -> p.setItemSlot(net.minecraft.world.entity.EquipmentSlot.HEAD, ItemStack.EMPTY)));
@@ -671,7 +671,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(42, CYAN, ChatFormatting.AQUA,
                 "Drown someone with a flood of water", "Waterloo, I was defeated & you won the war...")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     Mc.fill(Mc.level(t), o.offset(20, 12, 20), o.offset(-20, -1, -20), Blocks.WATER, FillMode.AIR_ONLY);
                     Mc.fill(Mc.level(t), o.offset(20, -2, 20), o.offset(-20, -6, -20), Blocks.WATER, FillMode.AIR_ONLY);
@@ -680,7 +680,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(43, BROWN, ChatFormatting.RED,
                 "Make someone extremely tiny", "The official Ant-Man mod in Minecraft")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.setAttribute(t, Attributes.SCALE, 0.0625);
                     ctx.effects().apply(t, new ActiveEffect("tiny_scale", 80 * 20, null,
                             p -> Mc.resetAttribute(p, Attributes.SCALE, DEF_SCALE)));
@@ -690,7 +690,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(44, LIME, ChatFormatting.GREEN,
                 "Make someone extremely huge", "Alice in Minecraft-Land")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.setAttribute(t, Attributes.SCALE, 16.0);
                     Mc.effect(t, MobEffects.JUMP_BOOST, 51, 3);
                     ctx.effects().apply(t, new ActiveEffect("huge_scale", 60 * 20,
@@ -731,7 +731,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(48, GRAY, ChatFormatting.WHITE,
                 "Block out the sun for someone", "Ehh, Vitamin D is overrated anyways")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     Mc.fill(lvl, new BlockPos(o.getX() + 64, 317, o.getZ() + 64),
@@ -747,7 +747,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(49, LIME, ChatFormatting.YELLOW,
                 "Fill up someone's inventory with junk", "Jason Momoa's Garbage Man has joined the server")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     net.minecraft.world.item.Item[] junk = {Items.CLAY_BALL, Items.PODZOL, Items.BIG_DRIPLEAF,
                             Items.PURPUR_PILLAR, Items.FIRE_CORAL_FAN, Items.SHORT_GRASS, Items.TINTED_GLASS,
                             Items.POISONOUS_POTATO, Items.GHAST_TEAR, Items.FLOWER_POT, Items.ITEM_FRAME,
@@ -760,7 +760,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(50, RED, ChatFormatting.RED,
                 "Transform the world around someone into the Nether", "Just like the A Minecraft Movie (2025)!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     int[] ticksLeft = {52 * 20};
                     ctx.effects().apply(t, new ActiveEffect("nether_world", 52 * 20, p -> {
                         int remaining = ticksLeft[0]--;
@@ -838,7 +838,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(51, WHITE, ChatFormatting.WHITE,
                 "Spawn a bunch of cobwebs on someone", "Now that's what I call a sticky situation!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     Mc.fill(Mc.level(t), o.offset(2, 3, 2), o.offset(-2, 0, -2), Blocks.COBWEB, FillMode.AIR_ONLY);
                     announce(ctx.game(), self, "Placed a bunch of cobwebs on", t, ChatFormatting.WHITE);
@@ -878,7 +878,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(56, BROWN, ChatFormatting.YELLOW,
                 "Block someone from using any items: 3 mins", "The whole gimmick of this map, the items, they can't even use")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("blockedItems", 155 * 20, null,
                             p -> Mc.msg(p, translate(ctx, ">> You can use items again!!! <<"), ChatFormatting.GREEN)));
                     ctx.game().data(t).clearOffer();
@@ -901,7 +901,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(58, GREEN, ChatFormatting.GREEN,
                 "Force a player to look down for 45 secs", "Always look where you're stepping!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("look_down", 45 * 20,
                             p -> Mc.rotateRelative(p, 0f, 8f), null));
                     announce(ctx.game(), self, "Forced a downward look for 45 seconds:", t, ChatFormatting.GREEN);
@@ -909,7 +909,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(59, WHITE, ChatFormatting.GREEN,
                 "Bombard someone with a ton of ghasts", "WHEWW!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     double[][] off = {{0, 5, 0}, {0, 5, 0}, {0, 7, 0}, {0, 9, 0}, {6, 5, 0}, {-6, 5, 0},
                             {0, 5, 10}, {-3, 5, -10}, {0, 4, 12}, {0, 4, -12}, {12, 4, 0}, {12, 4, 0}};
                     for (double[] d : off) Mc.summonRel(t, EntityTypes.GHAST, d[0], d[1], d[2]);
@@ -918,10 +918,10 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(60, LIME, ChatFormatting.RED,
                 "Jumpscare someone", "Life-threatening scariness")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> jumpscare(ctx, self, t)).build());
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> jumpscare(ctx, self, t)).build());
         add(DeathSwapItem.of(61, RED, ChatFormatting.RED,
                 "Lock someone into a prison", "Experience the prison-industrial complex for yourself")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     // Bedrock floor & ceiling.
@@ -959,7 +959,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(65, CYAN, ChatFormatting.AQUA,
                 "Liquidate all blocks surrounding a player", "Because the Nether exists, yunno?")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     replaceTagged(lvl, o.offset(12, 6, 12), o.offset(-12, -1, -12), Blocks.WATER.defaultBlockState());
@@ -977,7 +977,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(67, LIME, ChatFormatting.GREEN,
                 "Spawn a giant slime on someone", "That's the biggest slime I've ever seen!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Entity e = Mc.summonRel(t, EntityTypes.SLIME, 4, 6, 2);
                     if (e instanceof net.minecraft.world.entity.monster.cubemob.Slime slime) slime.setSize(8, true);
                     announce(ctx.game(), self, "Spawned a giant slime on", t, ChatFormatting.GREEN);
@@ -992,14 +992,14 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(69, RED, ChatFormatting.RED,
                 "Take away 2 hearts from someone (leave them w/8)", "Less harts!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Mc.addMaxHealth(t, -4.0);
                     announce(ctx.game(), self, "Removed 2 hearts from", t, ChatFormatting.RED);
                 }).build());
 
         add(DeathSwapItem.of(70, GREEN, ChatFormatting.GREEN,
                 "Launch a Viet Cong ambush on someone", "Queue the Rolling Stones music")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     // misc/tet_offensive: ~45 parched (the desert skeleton), named "The
                     // Việt Cộng", attack_damage 2, each wearing a "Vietnam Flag" player
                     // head (minecraft-heads #35930), ringed around the target, then a
@@ -1153,7 +1153,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(76, GREEN, ChatFormatting.GREEN,
                 "Teleport someone to a superflat world", "Throwback 2014")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     // Datapack 76b: spread the target into the bundled ds:superflat dimension.
                     ServerLevel flat = ctx.server().getLevel(
                             ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("ds", "superflat")));
@@ -1185,7 +1185,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(78, BROWN, ChatFormatting.YELLOW,
                 "Crash somebody's Minecraft game", "Breaking the fourth.. er, actually all the walls")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     // We do NOT actually crash a client; reproduce the in-game warning + heavy disorientation.
                     Mc.title(t, translate(ctx, ">>> WARNING!! <<<"), translate(ctx, "Your game will lag heavily!"), ChatFormatting.RED, ChatFormatting.RED);
                     Mc.effect(t, MobEffects.NAUSEA, 12, 0);
@@ -1205,7 +1205,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(80, WHITE, ChatFormatting.WHITE,
                 "Put someone into spectator mode: 20 secs", "Life as a floating ghostly head!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     t.setGameMode(GameType.SPECTATOR);
                     ctx.effects().apply(t, new ActiveEffect("specMode", 21 * 20, null,
                             p -> p.setGameMode(GameType.SURVIVAL)));
@@ -1251,7 +1251,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(84, WHITE, ChatFormatting.WHITE,
                 "Build a Quartz maze around someone", "Severance in Minecraft")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     BlockPos o = at(t);
                     int y = o.getY();
                     // misc/quartz_pillars ly/uy, chosen by the target's Y band (84b).
@@ -1263,7 +1263,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(85, GRAY, ChatFormatting.GRAY,
                 "Turn all blocks near someone to obsidian", "Just in case you need a portal")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     replaceTagged(Mc.level(t), at(t).offset(5, 3, 5), at(t).offset(-5, -2, -5),
                             Blocks.OBSIDIAN.defaultBlockState());
                     announce(ctx.game(), self, "Turned all nearby blocks to obsidian for", t, ChatFormatting.YELLOW);
@@ -1303,7 +1303,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(87, RED, ChatFormatting.LIGHT_PURPLE,
                 "Delete the Chunk someone's standing in", "That's a 16x16 hole in the world, BTW")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     Mc.fill(lvl, new BlockPos(o.getX() + 7, -63, o.getZ() + 10),
@@ -1316,7 +1316,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(88, YELLOW, ChatFormatting.YELLOW,
                 "Switch places with someone", "Like a sub-death swap")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Vec3 a = self.position(), b = t.position();
                     ServerLevel la = Mc.level(self), lb = Mc.level(t);
                     Mc.teleportTo(self, lb, b.x, b.y, b.z, self.getYRot(), self.getXRot());
@@ -1401,7 +1401,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(95, GREEN, ChatFormatting.GREEN,
                 "Put someone into Parkour Civilization (from Youtube)", "Evbo, noooooooo!")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     BlockState bars = Blocks.IRON_BARS.defaultBlockState();
@@ -1420,7 +1420,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(96, CYAN, ChatFormatting.GREEN,
                 "Secretly spy on what someone's currently doing", "Cold War shenanigans in Minecraft")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> spy(ctx, self, t)).build());
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> spy(ctx, self, t)).build());
 
         add(DeathSwapItem.of(97, ORANGE, ChatFormatting.GOLD,
                 "Shield yourself from negative items: 2.5 mins", "Nobody can use any items on you for 2.5 minutes!")
@@ -1428,7 +1428,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(98, BROWN, ChatFormatting.GOLD,
                 "Block someone from using crafting tables: 90 sec", "Minecraft without the -craft")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ctx.effects().apply(t, new ActiveEffect("no_craft", 110 * 20, p -> {
                         BlockPos o = p.blockPosition();
                         ServerLevel lvl = Mc.level(p);
@@ -1498,7 +1498,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(100, GREEN, ChatFormatting.GREEN,
                 "Spawn a Giant zombie on someone", "These Giants were real mobs until around 1.8")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Entity bigZombie = Mc.summonRelSafe(t, EntityTypes.ZOMBIE, -5, -5);
                     if (bigZombie instanceof LivingEntity le) {
                         var scale = le.getAttribute(Attributes.SCALE);
@@ -1545,7 +1545,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(103, YELLOW, ChatFormatting.YELLOW,
                 "Make someone continuously pee: 1 min", "How much did they have to drink??")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     // misc/is_peeing: each tick place flowing water (level 2) at the
                     // player's feet — the visible pee stream. (The old version only
                     // played a quiet splash sound, so it appeared to do nothing.)
@@ -1578,7 +1578,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(105, CYAN, ChatFormatting.LIGHT_PURPLE,
                 "Summon the Warden on someone", "Deep Dark Edition")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Entity w = Mc.summonRel(t, EntityTypes.WARDEN, 0, 0, 0);
                     if (w instanceof net.minecraft.world.entity.Mob m) m.setPersistenceRequired();
                     Mc.title(t, " ", translate(ctx, ">> warden.. <<"), ChatFormatting.WHITE, ChatFormatting.DARK_AQUA);
@@ -1587,7 +1587,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(106, RED, ChatFormatting.RED,
                 "Teleport someone directly to the Nether", "A Throwback to 1.16")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel nether = ctx.server().getLevel(Level.NETHER);
                     if (nether != null) {
                         double nx = t.getX() / 8.0, nz = t.getZ() / 8.0;
@@ -1606,7 +1606,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(107, RED, ChatFormatting.RED,
                 "Summon Oppenheimer's NUCLEAR bomb on someone", "Now you are become death, destroyer of Minecrafts")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     Vec3 nukePos = t.position();
                     ServerLevel nukeLvl = Mc.level(t);
                     net.minecraft.nbt.CompoundTag nukeTag = new net.minecraft.nbt.CompoundTag();
@@ -1657,7 +1657,7 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(109, ORANGE, ChatFormatting.YELLOW,
                 "Set everything around someone on fire", "We didn't start the fire...")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     ServerLevel lvl = Mc.level(t);
                     BlockPos o = at(t);
                     BlockState fire = Blocks.FIRE.defaultBlockState();
@@ -1685,12 +1685,12 @@ public final class ItemRegistry {
 
         add(DeathSwapItem.of(110, PURPLE, ChatFormatting.LIGHT_PURPLE,
                 "Spawn 100 Endermen on someone", "We didn't start the fire...")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) ->
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) ->
                         spawnHorde(ctx, self, t, EntityTypes.ENDERMAN, "Spawned 100 Endermen at")).build());
 
         add(DeathSwapItem.of(111, YELLOW, ChatFormatting.YELLOW,
                 "Spawn 3 chicken jockeys on someone", "CHICKEN JOCKEYYYYYY")
-                .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
+                .target(ItemTarget.CHOSEN_OPPONENT).effect((ctx, self, t) -> {
                     for (int i = 0; i < 3; i++) {
                         double angle = 2 * Math.PI * i / 3;
                         double r = 1.5 + Math.random();

@@ -38,7 +38,7 @@ public final class DeathSwapItem {
         private final ChatFormatting nameColor;
         private final String name;
         private final String lore;
-        private ItemTarget target = ItemTarget.SELF;
+        private ItemTarget target = ItemTarget.CUSTOM;
         private ItemEffect effect = (ctx, self, t) -> {};
 
         private Builder(int id, DyeColor dye, ChatFormatting nameColor, String name, String lore) {

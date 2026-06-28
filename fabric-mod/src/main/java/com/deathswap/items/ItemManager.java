@@ -242,29 +242,14 @@ public final class ItemManager {
         data.choosingItem = false;
 
         switch (item.target) {
-            case SELF, EVERYONE -> {
-                applyEveryoneOrSelf(item, player);
+            case SELF, CUSTOM -> {
+                // CUSTOM effects resolve their own scope and ignore the target arg;
+                // SELF effects act on the user. Both fire immediately with the user
+                // as the nominal target.
+                fire(item, player, player);
                 afterUse(player);
             }
-            case ALL_OTHERS -> {
-                for (ServerPlayer other : game.alivePlayers()) {
-                    if (other != player) {
-                        fire(item, player, other);
-                    }
-                }
-                afterUse(player);
-            }
-            case RANDOM_OPPONENT -> {
-                ServerPlayer victim = randomOpponent(player);
-                if (victim != null) {
-                    fire(item, player, victim);
-                } else {
-                    Mc.msg(player, Translator.translate(game.settings().isDutch(),
-                            ">> All opponents are shielded! Item had no effect. <<"), ChatFormatting.RED);
-                }
-                afterUse(player);
-            }
-            case OPPONENT -> {
+            case CHOSEN_OPPONENT -> {
                 data.pendingTargetItem = item;
                 promptForTarget(player, item);
             }
@@ -272,28 +257,8 @@ public final class ItemManager {
         return true;
     }
 
-    private void applyEveryoneOrSelf(DeathSwapItem item, ServerPlayer player) {
-        if (item.target == ItemTarget.EVERYONE) {
-            for (ServerPlayer p : game.alivePlayers()) {
-                fire(item, player, p);
-            }
-        } else {
-            fire(item, player, player);
-        }
-    }
-
     private void fire(DeathSwapItem item, ServerPlayer self, ServerPlayer target) {
         item.effect.apply(new ItemContext(game.server(), game, game.effects()), self, target);
-    }
-
-    private ServerPlayer randomOpponent(ServerPlayer self) {
-        List<ServerPlayer> opponents = new ArrayList<>(game.alivePlayers());
-        opponents.remove(self);
-        opponents.removeIf(p -> game.effects().hasEffect(p.getUUID(), "shield"));
-        if (opponents.isEmpty()) {
-            return null;
-        }
-        return opponents.get(self.getRandom().nextInt(opponents.size()));
     }
 
     // ---- targeting (opponent items) ----
