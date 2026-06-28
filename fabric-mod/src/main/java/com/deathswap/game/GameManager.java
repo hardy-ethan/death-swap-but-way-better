@@ -751,4 +751,859 @@ public final class GameManager {
                 ? String.format("%d:%02d:%02d", hours, minutes, seconds)
                 : String.format("%d:%02d", minutes, seconds);
     }
+
+    // ---- phase transitions ----
+
+    /** Begin a game with everyone currently in the hub. */
+    public boolean startGame() {
+        settings.validate();
+        List<ServerPlayer> participants = new ArrayList<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PlayerData data = data(player);
+            if (data.playing && !data.eliminated) {
+                participants.add(player);
+            }
+        }
+        if (participants.isEmpty()) {
+            return false;
+        }
+        enterRunning(participants);
+        return true;
+    }
+
+    /** HUB → RUNNING: initialize and launch a new round. */
+    private void enterRunning(List<ServerPlayer> participants) {
+        transitionTo(GamePhase.RUNNING);
+        applyGameRules();
+
+        startingPlayerCount = participants.size();
+
+        // Start snapshotting block changes now, before any game-driven world edits
+        // (gravel towers, item builds) or player mining, so the whole game can be
+        // rolled back to this point when it ends.
+        worldRollback.begin();
+
+        // Every round starts with a clean advancement book for everyone.
+        clearAllAdvancements();
+
+        unfreezeTimeAndWeather();
+
+        for (ServerPlayer player : participants) {
+            PlayerData data = data(player);
+            data.resetForNewGame(settings.maxLives);
+            player.setGameMode(GameType.SURVIVAL);
+            // Full reset so nothing leaks in from a previous game: clear any running
+            // effects (the mod's custom ones plus vanilla mob effects, including the
+            // hub's infinite Regeneration), then reset max health/health/food/
+            // saturation and wipe the inventory + ender chest before the starter kit
+            // and spread.
+            effects.clearAll(player);
+            player.removeAllEffects();
+            if (player.isDeadOrDying()) {
+                // Player is on the death screen. Skip setHealth(20) — if we set
+                // health > 0 now the server will ignore their upcoming "Respawn"
+                // click (isDeadOrDying() would be false), leaving them stuck on
+                // the death screen. Defer the full setup to onPlayerRespawn().
+                data.needsSetupOnRespawn = true;
+            } else {
+                resetPlayerStats(player);
+                if (settings.startWithBasicTools) {
+                    giveStarterKit(player);
+                }
+            }
+            // Spread far away and set the player's spawn at the destination, so a
+            // death/relog returns them there rather than the world origin.
+            spreadFarAway(player, true);
+            // warping_all.mcfunction: ">> Spreading players... <<" action bar.
+            Mc.actionbar(player, Messages.spreadingActionbar(nl()));
+            // Blind everyone for the pre-game freeze window; tickFreeze() holds
+            // them in place for the same duration before the swap clock begins.
+            Mc.effect(player, MobEffects.BLINDNESS, FREEZE_TICKS / 20, 0);
+        }
+
+        // Assign permanent slot numbers after the per-player reset (which zeroes them).
+        assignPermanentNumbers(participants);
+
+        gameTicksElapsed = 0;
+        scoreboard.start(server, nl());
+        updateSidebar();
+        // Hold everyone blind and motionless first; the swap and item clocks only
+        // start once the freeze ends (see tickFreeze / startClocksAfterFreeze).
+        freezeTicksRemaining = FREEZE_TICKS;
+
+        // game_start.mcfunction runs ~5s after the spread: the title card, the raid
+        // horn (volume 99, pitch 1) and the map credits.
+        schedule(20 * 5, () -> {
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                Mc.titleRaw(p, Messages.startTitle(nl()), Messages.startSubtitle(nl()));
+                Mc.playSound(p, SoundEvents.RAID_HORN, 99.0f, 1.0f);
+                Mc.msg(p, Messages.mapCredit(nl()));
+                Mc.msg(p, Messages.additionalCredit(nl()));
+            }
+        });
+
+        // Enable the emergency teleport after 32 seconds (start_tp_away.mcfunction;
+        // its protip tellraw is commented out in the datapack, so no chat line).
+        schedule(20 * 32, () -> {
+            for (ServerPlayer p : alivePlayers()) {
+                data(p).canTpAway = true;
+            }
+        });
+    }
+
+    private void resetSwapClock() {
+        if (settings.randomCycle) {
+            int minutes = random.nextInt(5); // 0..4
+            int seconds = random.nextInt(60);
+            if (minutes == 0 && seconds < 30) {
+                seconds = 30 + random.nextInt(30); // avoid sub-30s cycles
+            }
+            swapTicksRemaining = (minutes * 60 + seconds) * 20;
+        } else {
+            swapTicksRemaining = settings.swapIntervalSeconds * 20;
+        }
+        lastWarnSecondAnnounced = -1;
+    }
+
+    // ---- swap (game/swap.mcfunction) ----
+
+    public void doSwap() {
+        List<ServerPlayer> alive = alivePlayers();
+        if (alive.size() < 2) {
+            return;
+        }
+        Collections.shuffle(alive, random);
+
+        // Snapshot every player's location, then rotate: player i receives the
+        // location player i+1 was standing in (a cyclic position swap).
+        List<Location> locations = new ArrayList<>();
+        for (ServerPlayer player : alive) {
+            locations.add(Location.of(player));
+        }
+
+        for (int i = 0; i < alive.size(); i++) {
+            ServerPlayer player = alive.get(i);
+            int destIndex = (i + 1) % alive.size();
+            Location dest = locations.get(destIndex);
+            dest.apply(player);
+            // Disable swap fall damage exactly like the datapack (gamerule fall_damage
+            // false for a tick) — reset accumulated fall, with no extra status effects.
+            player.fallDistance = 0.0f;
+            // swap.mcfunction: clear the title, show the gold ">> Swapped! <<" action
+            // bar, then the green "You warped to: <name>" line (Dutch adds a 2nd line).
+            // There is no swap sound in the datapack. Use a real `title clear` so the
+            // "Swap in 1" countdown subtitle (with its long stay time) vanishes at once
+            // instead of lingering on screen.
+            Mc.clearTitles(player);
+            Mc.actionbar(player, Messages.swapActionbar(nl()));
+            ServerPlayer warpedToPlayer = alive.get(destIndex);
+            Mc.msg(player, Messages.warpedTo(nl(), warpedToPlayer.getDisplayName()));
+            if (nl()) {
+                Mc.msg(player, Messages.warpedToDutch());
+            }
+            data(player).canTpAway = true; // restore the emergency teleport each cycle
+        }
+    }
+
+    /** Item 5: swap everyone almost immediately without resetting the cycle timer. */
+    public void instantSwap() {
+        schedule(4, this::doSwap);
+    }
+
+    /** Item 47: cut 30s off the current cycle and shorten the configured interval. */
+    public void shortenSwapTimer(int seconds) {
+        swapTicksRemaining = Math.max(20, swapTicksRemaining - seconds * 20);
+        settings.swapIntervalSeconds = Math.max(30, settings.swapIntervalSeconds - seconds);
+    }
+
+    /** Item 66: toggle the overworld between midnight and noon. */
+    public void toggleTime() {
+        Mc.runServer(server, isNight() ? "time set noon" : "time set midnight");
+    }
+
+    public boolean isNight() {
+        long time = server.overworld().getOverworldClockTime() % 24000;
+        return time >= 13000 && time < 23000;
+    }
+
+    private void resetAndFreezeTimeAndWeather() {
+        Mc.runServer(server, "time set noon");
+        Mc.runServer(server, "gamerule doDaylightCycle false");
+        Mc.runServer(server, "weather clear");
+        Mc.runServer(server, "gamerule doWeatherCycle false");
+    }
+
+    private void unfreezeTimeAndWeather() {
+        Mc.runServer(server, "gamerule doDaylightCycle true");
+        Mc.runServer(server, "gamerule doWeatherCycle true");
+    }
+
+    public void toggleLanguage() {
+        languageToggledByItem = !languageToggledByItem;
+        boolean toDutch = nl();
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            Mc.titleRaw(p, Messages.langTitle(toDutch), Messages.langSubtitle(toDutch));
+            Mc.playSound(p, SoundEvents.UI_BUTTON_CLICK, 9.0f, 1.0f);
+            Mc.msg(p, Messages.langBanner(toDutch));
+            if (toDutch) {
+                Mc.msg(p, Messages.langTranslatorNote());
+            }
+        }
+    }
+
+    // ---- death / elimination (game/player_died, player_eliminated) ----
+
+    /**
+     * Called from the death mixin/event. Returns true if the death should be
+     * allowed to proceed, false to cancel it (the player survives).
+     */
+    public boolean onAllowDeath(ServerPlayer player, DamageSource source) {
+        if (phase != GamePhase.RUNNING) {
+            return true;
+        }
+        PlayerData data = data(player);
+        if (!data.playing || data.eliminated) {
+            return true;
+        }
+
+        // Death immunity window after a recent death (no_death).
+        if (data.deathImmunityTicks > 0) {
+            survive(player);
+            return false;
+        }
+
+        // If the player is holding a Totem of Undying (and the damage isn't a kind
+        // that bypasses it), let vanilla's death handling run: returning true keeps
+        // the isDeadOrDying() branch alive in hurtServer, so checkTotemDeathProtection
+        // pops the totem, restores 1 health and applies its effects. No life is lost.
+        // We must not handle the death ourselves here, or the totem would be skipped.
+        if (hasTotem(player, source)) {
+            return true;
+        }
+
+        data.lives--;
+        // no_death immunity: the datapack adds 5/tick and re-allows death at 800,
+        // i.e. 160 ticks = 8 seconds (not 40s).
+        data.deathImmunityTicks = 160;
+
+        // player_died.mcfunction (runs for every death, including the fatal one):
+        // broadcast line, ">> YOU DIED! <<" title and the "-1 Life!" subtitle. The
+        // broadcast carries the vanilla death message so it states how they died.
+        broadcast(Messages.diedBroadcast(nl(), source.getLocalizedDeathMessage(player)));
+        Mc.titleRaw(player, Messages.diedTitle(nl()), Messages.diedSubtitle(nl()));
+
+        if (data.lives <= 0) {
+            eliminate(player);
+        } else {
+            survive(player);
+        }
+        updateSidebar();
+        return false; // we handle this death ourselves
+    }
+
+    /**
+     * Mirror vanilla {@code LivingEntity.checkTotemDeathProtection}: a death is
+     * deflected by a totem only when the damage doesn't bypass invulnerability and
+     * the player holds an item carrying the {@code DEATH_PROTECTION} component in
+     * either hand. We don't consume the item here; vanilla does that once we let
+     * the death proceed.
+     */
+    private boolean hasTotem(ServerPlayer player, DamageSource source) {
+        if (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY)) {
+            return false;
+        }
+        for (InteractionHand hand : InteractionHand.values()) {
+            if (player.getItemInHand(hand).has(DataComponents.DEATH_PROTECTION)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Re-supply the starter kit when an active participant respawns empty-handed,
+     * so a death/relog that wiped their inventory doesn't leave them defenseless.
+     * In hub phase, restore the full hub loadout (mace + wind charges).
+     */
+    public void onPlayerRespawn(ServerPlayer player) {
+        if (phase == GamePhase.HUB) {
+            sendToHub(player);
+            return;
+        }
+        if (phase != GamePhase.RUNNING) {
+            return;
+        }
+        PlayerData data = data(player);
+        if (data.needsSetupOnRespawn) {
+            data.needsSetupOnRespawn = false;
+            resetPlayerStats(player);
+            if (settings.startWithBasicTools) {
+                giveStarterKit(player);
+            }
+            if (freezeTicksRemaining > 0) {
+                Mc.effect(player, MobEffects.BLINDNESS, freezeTicksRemaining / 20, 0);
+            }
+            return;
+        }
+        if (!settings.startWithBasicTools) {
+            return;
+        }
+        if (data.playing && !data.eliminated && player.getInventory().isEmpty()) {
+            giveStarterKit(player);
+        }
+    }
+
+    private void survive(ServerPlayer player) {
+        player.setHealth(player.getMaxHealth());
+        player.clearFire();
+        player.fallDistance = 0.0f;
+        // We cancel vanilla death, so the inventory is never dropped automatically.
+        // Honour the keepInventory gamerule ourselves: when it's off, drop everything
+        // at the death location (before we teleport the player away).
+        if (!server.getGameRules().get(GameRules.KEEP_INVENTORY)) {
+            dropInventory(player);
+        }
+        // A vanilla respawn clears all active effects; emulate that since the death
+        // was cancelled.
+        player.removeAllEffects();
+        // Death returns the player to their initial spread location (their spawn
+        // point), just as a vanilla death respawns them at the spawn point set in
+        // game_start.mcfunction (spawnpoint @s ~ ~ ~). We emulate the death rather
+        // than letting it run, so teleport them there ourselves.
+        PlayerData data = data(player);
+        if (data.spawnPos != null) {
+            Mc.teleportTo(player, server.overworld(),
+                    data.spawnPos.getX() + 0.5, data.spawnPos.getY(), data.spawnPos.getZ() + 0.5,
+                    data.spawnYaw, player.getXRot());
+        }
+        // player_died.mcfunction: effect give @s minecraft:resistance 10 5.
+        Mc.effect(player, MobEffects.RESISTANCE, 10, 5);
+        // Respawn-fresh hunger.
+        player.getFoodData().setFoodLevel(20);
+        player.getFoodData().setSaturation(5.0f);
+    }
+
+    /**
+     * Drop every item in the player's inventory at their feet, then empty it. The
+     * immovable barrier filler in the powerup slots is left untouched — it's UI
+     * furniture, not loot, and must stay in place for the item system.
+     */
+    private void dropInventory(ServerPlayer player) {
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (!stack.isEmpty() && !ItemManager.isLocked(stack)) {
+                player.drop(stack, true, false);
+                inventory.setItem(slot, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    private void eliminate(ServerPlayer player) {
+        PlayerData data = data(player);
+        data.lives = 0;
+        data.eliminated = true;
+        data.playing = false;
+        data.clearOffer();
+        effects.clearAll(player);
+        player.setGameMode(GameType.SPECTATOR);
+        // player_eliminated.mcfunction: dragon growl (volume 9, pitch 1.2) and the
+        // ">> ELIMINATED! <<" subtitle (the "YOU DIED" title from player_died stays).
+        Mc.playSound(player, SoundEvents.ENDER_DRAGON_GROWL, 9.0f, 1.2f);
+        Mc.subtitleRaw(player, Messages.eliminatedSubtitle(nl()));
+    }
+
+    private void checkWinCondition() {
+        if (phase != GamePhase.RUNNING) {
+            return;
+        }
+        List<ServerPlayer> alive = alivePlayers();
+        if (startingPlayerCount >= 2 && alive.size() <= 1) {
+            enterEnding(alive.isEmpty() ? null : alive.get(0));
+        }
+    }
+
+    /** RUNNING → ENDING: tally the result and start the 10-second victory countdown. */
+    private void enterEnding(ServerPlayer winner) {
+        transitionTo(GamePhase.ENDING);
+        endingTicksRemaining = 20 * 10;
+        if (winner != null) {
+            PlayerData data = data(winner);
+            data.winner = true;
+            data.wins++; // scoreboard players add @s Wins 1
+            winsStore.set(winner.getUUID(), data.wins); // persist across restarts
+
+            // prep_winner.mcfunction: clear effects on everyone, then resistance 20 5
+            // and saturation 20 5 for all; the winner gets glowing (12 1 after
+            // winner.mcfunction overrides) and a totem of undying in the offhand.
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                effects.clearAll(p);
+                Mc.effect(p, MobEffects.RESISTANCE, 20, 5);
+                Mc.effect(p, MobEffects.SATURATION, 20, 5);
+            }
+            Mc.effect(winner, MobEffects.GLOWING, 12, 1);
+
+            // winner.mcfunction: title times 0 140 5, the green win title/subtitle,
+            // the dragon-death sound (volume 99) and the broadcast line.
+            Component winnerName = winner.getDisplayName();
+            broadcast(Messages.winnerBroadcast(nl(), winnerName));
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                Mc.titleTimes(p, 0, 140, 5);
+                Mc.titleRaw(p, Messages.winnerTitle(nl(), winnerName), Messages.winnerSubtitle(nl()));
+                Mc.playSound(p, SoundEvents.ENDER_DRAGON_DEATH, 99.0f, 1.0f);
+            }
+        } else {
+            broadcast(">> The game ended in a draw. <<", ChatFormatting.YELLOW);
+        }
+        broadcast(">> Game lasted " + formatClock(gameTicksElapsed / 20) + "! <<", ChatFormatting.GRAY);
+    }
+
+    /** ENDING → RUNNING: undo the last winner declaration so the round can continue. */
+    private void rollbackToRunning() {
+        undoWinnerDeclaration();
+        transitionTo(GamePhase.RUNNING);
+        broadcast(">> Game rolled back — a life was granted. <<", ChatFormatting.YELLOW);
+    }
+
+    /**
+     * Admin command: give one life to {@code target}, resurrecting
+     * them if they were eliminated and rolling the game back from the ENDING phase
+     * if their death was what triggered it. Returns false if there is no game to
+     * act on (hub / already done).
+     */
+    public boolean addLife(ServerPlayer target) {
+        if (phase != GamePhase.RUNNING && phase != GamePhase.ENDING) {
+            return false;
+        }
+        PlayerData data = data(target);
+
+        // If the game is in the ENDING phase, undo the winner declaration first so
+        // the round can continue. This covers the case where this player's death (or
+        // elimination) caused the win condition to fire.
+        if (phase == GamePhase.ENDING) {
+            rollbackToRunning();
+        }
+
+        // Resurrect an eliminated player.
+        if (data.eliminated) {
+            data.eliminated = false;
+            data.playing = true;
+            data.deathImmunityTicks = 160;
+            effects.clearAll(target);
+            target.setGameMode(GameType.SURVIVAL);
+            target.setHealth(target.getMaxHealth());
+            target.getFoodData().setFoodLevel(20);
+            target.getFoodData().setSaturation(5.0f);
+            // Return them to their initial spread spawn, same as a normal death.
+            if (data.spawnPos != null) {
+                Mc.teleportTo(target, server.overworld(),
+                        data.spawnPos.getX() + 0.5, data.spawnPos.getY(), data.spawnPos.getZ() + 0.5,
+                        data.spawnYaw, target.getXRot());
+            }
+        }
+
+        data.lives = Math.max(data.lives, 0) + 1;
+        updateSidebar();
+
+        broadcast(target.getDisplayName().getString() + " was granted a life by an admin.", ChatFormatting.AQUA);
+        return true;
+    }
+
+    /**
+     * Undo a winner declaration: strip the win credit, remove the winner's special
+     * effects (glowing, totem, resistance/saturation), and restore the game-time
+     * effects clock so play can resume.
+     */
+    private void undoWinnerDeclaration() {
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            PlayerData d = data(p);
+            if (d.winner) {
+                d.winner = false;
+                d.wins = Math.max(0, d.wins - 1);
+                winsStore.set(p.getUUID(), d.wins);
+                p.removeEffect(MobEffects.GLOWING);
+            }
+            p.removeEffect(MobEffects.RESISTANCE);
+            p.removeEffect(MobEffects.SATURATION);
+        }
+    }
+
+    /** RUNNING | ENDING → HUB: end the round and return all players to the lobby. */
+    public void enterHub() {
+        transitionTo(GamePhase.HUB);
+        // Safety net: if the game is stopped while paused, lift the world freeze and
+        // clear the overlay so the hub (and next game) runs normally.
+        if (paused) {
+            unpauseGame();
+        }
+        applyGameRules();
+        // Clear per-round state so offline players from this game don't bleed
+        // playing/lives data into the next game's sidebar.
+        for (PlayerData d : playerData.values()) {
+            d.resetForHub();
+        }
+        languageToggledByItem = false;
+        // Swap the game's lives/health HUD back to the hub's wins tally.
+        scoreboard.startHub(server, nl());
+        // Don't discard the cache: a destination is removed from it the moment it's
+        // handed out (ChunkCache.next), so anything still queued is unused and safe
+        // to carry into the next game. The hub phase tops it back up from here.
+        lastCacheReadyLogged = -1; // re-log current cache state as the hub resumes
+        lastCachePendingLogged = -1;
+
+        resetAndFreezeTimeAndWeather();
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            sendToHub(player);
+            Mc.setSpawn(player, server.overworld(), hubSpawn, player.getYRot(), player.getXRot());
+        }
+        // Refresh the wins tally now everyone is back in the lobby (the winner's
+        // count has gone up).
+        updateHubScoreboard();
+        // Wipe everyone's advancements so nothing earned during the round carries
+        // into the lobby or the next game.
+        clearAllAdvancements();
+        // Now that everyone is safely back in the hub, undo every block change the
+        // game made so the shared world is restored to how it looked before the round.
+        int restored = worldRollback.rollback(server);
+        if (restored > 0) {
+            DeathSwapMod.LOGGER.info("Rolled back {} block change(s) from the last game.", restored);
+        }
+        // Clean up the End: remove everything except the Ender Dragon and End Crystals
+        // so the dimension resets to a playable state for the next game.
+        cleanUpEndEntities();
+        broadcast(">> Back to the lobby. Run /deathswap start for another round. <<",
+                ChatFormatting.AQUA);
+    }
+
+    // ---- helpers ----
+
+    /**
+     * Refresh the lives sidebar. Shows every participant — those still alive
+     * and eliminated ones at 0 lives — including offline players who still have
+     * lives remaining.
+     */
+    private void updateSidebar() {
+        List<ServerPlayer> participants = new ArrayList<>();
+        java.util.Set<UUID> online = new java.util.HashSet<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PlayerData data = data(player);
+            if (data.playing || data.eliminated) {
+                participants.add(player);
+                online.add(player.getUUID());
+            }
+        }
+        scoreboard.updateLives(participants, p -> data(p).lives);
+        for (Map.Entry<UUID, PlayerData> e : playerData.entrySet()) {
+            PlayerData d = e.getValue();
+            String name = playerNames.get(e.getKey());
+            if (name != null && !online.contains(e.getKey()) && (d.playing || d.eliminated) && d.lives > 0) {
+                scoreboard.updateLivesForName(name, d.lives);
+            }
+        }
+    }
+
+    /**
+     * Refresh the hub's wins HUD (sidebar + below-name) with every player's
+     * lifetime win count — including those who have since disconnected. Only
+     * meaningful while in the hub, where the wins objectives are displayed.
+     */
+    private void updateHubScoreboard() {
+        java.util.Set<UUID> online = new java.util.HashSet<>();
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            online.add(p.getUUID());
+        }
+        scoreboard.updateWins(server.getPlayerList().getPlayers(), p -> data(p).wins);
+        for (Map.Entry<UUID, PlayerData> e : playerData.entrySet()) {
+            PlayerData d = e.getValue();
+            String name = playerNames.get(e.getKey());
+            if (name != null && !online.contains(e.getKey())) {
+                scoreboard.updateWinsForName(name, d.wins);
+            }
+        }
+    }
+
+    /**
+     * Wipe every player's advancements, online and offline, so each game starts
+     * and ends with a clean advancement book and nothing carries over between
+     * rounds. Online players are cleared through their live {@link PlayerAdvancements}
+     * (the change is pushed to their client and persisted on logout); offline
+     * players have their saved advancement files deleted from disk, since their
+     * progress only lives there while they're away.
+     */
+    private void clearAllAdvancements() {
+        var allAdvancements = server.getAdvancements().getAllAdvancements();
+        java.util.Set<UUID> online = new java.util.HashSet<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            online.add(player.getUUID());
+            PlayerAdvancements progress = player.getAdvancements();
+            for (AdvancementHolder holder : allAdvancements) {
+                for (String criterion : holder.value().criteria().keySet()) {
+                    progress.revoke(holder, criterion);
+                }
+            }
+            // Push the revocations to the client now rather than waiting for the
+            // next tick's flush, so the advancement screen updates immediately.
+            progress.flushDirty(player, true);
+        }
+
+        // Offline players: their advancements exist only as <uuid>.json files on
+        // disk. Delete those; skip online players, whose live data (handled above)
+        // would otherwise just rewrite the file on their next logout.
+        java.nio.file.Path dir = server.getWorldPath(LevelResource.PLAYER_ADVANCEMENTS_DIR);
+        if (!java.nio.file.Files.isDirectory(dir)) {
+            return;
+        }
+        try (var files = java.nio.file.Files.newDirectoryStream(dir, "*.json")) {
+            for (java.nio.file.Path file : files) {
+                String fileName = file.getFileName().toString();
+                UUID uuid;
+                try {
+                    uuid = UUID.fromString(fileName.substring(0, fileName.length() - ".json".length()));
+                } catch (IllegalArgumentException notAPlayerFile) {
+                    continue;
+                }
+                if (!online.contains(uuid)) {
+                    java.nio.file.Files.deleteIfExists(file);
+                }
+            }
+        } catch (java.io.IOException e) {
+            DeathSwapMod.LOGGER.warn("Failed to clear offline player advancements", e);
+        }
+    }
+
+    public List<ServerPlayer> alivePlayers() {
+        List<ServerPlayer> alive = new ArrayList<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            PlayerData data = data(player);
+            if (data.playing && !data.eliminated) {
+                alive.add(player);
+            }
+        }
+        return alive;
+    }
+
+    public ServerPlayer playerByPermNo(int permNo) {
+        for (ServerPlayer player : alivePlayers()) {
+            if (data(player).permPNo == permNo) {
+                return player;
+            }
+        }
+        return null;
+    }
+
+    private void assignPermanentNumbers(List<ServerPlayer> participants) {
+        List<ServerPlayer> shuffled = new ArrayList<>(participants);
+        Collections.shuffle(shuffled, random);
+        for (int i = 0; i < shuffled.size(); i++) {
+            data(shuffled.get(i)).permPNo = i + 1;
+        }
+    }
+
+    public void spreadFarAway(ServerPlayer player) {
+        spreadFarAway(player, false);
+    }
+
+    /**
+     * Scatter a player to a random far-away surface location. When
+     * {@code setSpawn} is true the player's respawn point is moved to the
+     * destination too — used for the initial spread and the "teleport really
+     * far away" item, but not for momentary punishment teleports.
+     */
+    public void spreadFarAway(ServerPlayer player, boolean setSpawn) {
+        ServerLevel level = server.overworld();
+        // A destination pre-generated while no game was running when one is ready (so
+        // the world-gen cost isn't paid here at game start), otherwise rolled live. The
+        // cache handles the fallback internally, so this call always returns a valid
+        // dry-land column regardless of whether the cache had anything.
+        net.minecraft.core.BlockPos pos = chunkCache.next(level, random, SPREAD_MIN, SPREAD_MAX);
+        Mc.teleportTo(player, level, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5,
+                player.getYRot(), player.getXRot());
+        if (setSpawn) {
+            // Give the player their own spawn point at the destination, so a
+            // death/relog returns them here rather than at the world origin
+            // (datapack: spawnpoint @s ~ ~ ~ in game_start.mcfunction).
+            Mc.setSpawn(player, level, pos, player.getYRot(), player.getXRot());
+            // Remember it so a death sends the player back to this initial spread
+            // location, mirroring the vanilla respawn-at-spawn-point behaviour.
+            PlayerData data = data(player);
+            data.spawnPos = pos;
+            data.spawnYaw = player.getYRot();
+        }
+    }
+
+    private void teleportToWorldSpawn(ServerPlayer player) {
+        // The lobby isn't a built map (unlike the datapack's superflat hub), so we
+        // gather everyone at one dry surface column near the overworld origin.
+        ServerLevel level = server.overworld();
+        if (hubSpawn == null) {
+            hubSpawn = buildHubPlatform(level);
+        }
+        Mc.teleportTo(player, level, hubSpawn.getX() + 0.5, hubSpawn.getY(), hubSpawn.getZ() + 0.5,
+                player.getYRot(), player.getXRot());
+    }
+
+    /**
+     * Lay the lobby's gather point at the origin column. The lobby isn't a built
+     * map, so we drop a small stone platform at the surface there — this keeps the
+     * hub on solid ground even when the origin sits in an ocean, so players never
+     * spawn bobbing in water.
+     */
+    private net.minecraft.core.BlockPos buildHubPlatform(ServerLevel level) {
+        net.minecraft.core.BlockPos feet = surfaceColumn(level, 0, 0);
+        for (int px = -20; px <= 20; px++) {
+            for (int pz = -20; pz <= 20; pz++) {
+                level.setBlockAndUpdate(feet.offset(px, -1, pz), Blocks.STONE.defaultBlockState());
+            }
+        }
+        return feet;
+    }
+
+    /** Surface (feet) position of the column at the given x/z, generating the chunk first. */
+    private net.minecraft.core.BlockPos surfaceColumn(ServerLevel level, int x, int z) {
+        // Force the chunk to generate before sampling the heightmap; on an
+        // ungenerated chunk getHeight() returns the world minimum (the void).
+        level.getChunk(x >> 4, z >> 4);
+        int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+        return new net.minecraft.core.BlockPos(x, y, z);
+    }
+
+    private void giveStarterKit(ServerPlayer player) {
+        Mc.give(player, net.minecraft.world.item.Items.STONE_SWORD, 1);
+        Mc.give(player, net.minecraft.world.item.Items.STONE_AXE, 1);
+        Mc.give(player, net.minecraft.world.item.Items.STONE_PICKAXE, 1);
+        Mc.give(player, net.minecraft.world.item.Items.STONE_SHOVEL, 1);
+        Mc.give(player, net.minecraft.world.item.Items.CRAFTING_TABLE, 1);
+    }
+
+    private int itemOfferIntervalTicks() {
+        // Datapack scales the item interval with player count; roughly 45s solo
+        // down to a few seconds with a full lobby (reset_time.mcfunction).
+        int n = Math.max(1, alivePlayers().size());
+        int seconds = switch (n) {
+            case 1 -> 35;
+            case 2 -> 22;
+            case 3 -> 15;
+            case 4 -> 11;
+            case 5 -> 9;
+            case 6 -> 7;
+            case 7 -> 6;
+            case 8, 9 -> 5;
+            default -> 4;
+        };
+        return seconds * 20;
+    }
+
+    public void broadcast(String text, ChatFormatting color) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Mc.msg(player, text, color);
+        }
+    }
+
+    public void broadcast(Component component) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            Mc.msg(player, component);
+        }
+    }
+
+    private void cleanUpEndEntities() {
+        ServerLevel end = server.getLevel(Level.END);
+        if (end == null) return;
+        List<Entity> toDiscard = new ArrayList<>();
+        for (Entity entity : end.getAllEntities()) {
+            if (entity instanceof Player) continue;
+            if (entity.getType() == EntityTypes.ENDER_DRAGON) continue;
+            if (entity.getType() == EntityTypes.END_CRYSTAL) continue;
+            toDiscard.add(entity);
+        }
+        for (Entity entity : toDiscard) {
+            entity.discard();
+        }
+    }
+
+    // ---- gravel tower growth (item 9: misc/gravel_up grows the column over time) ----
+
+    /** Start a gravel column that grows upward to the build limit, like the datapack marker. */
+    public void addGravelTower(ServerLevel level, int x, int baseY, int z) {
+        gravelTowers.add(new GravelTower(level, x, baseY, z));
+    }
+
+    private void tickGravelTowers() {
+        for (int i = gravelTowers.size() - 1; i >= 0; i--) {
+            GravelTower g = gravelTowers.get(i);
+            g.level.setBlockAndUpdate(new BlockPos(g.x, (int) Math.floor(g.y), g.z),
+                    Blocks.GRAVEL.defaultBlockState());
+            g.y += 0.5; // marker rises 0.5/tick in misc/gravel_up
+            if (g.y >= 319) {
+                gravelTowers.remove(i);
+            }
+        }
+    }
+
+    private static final class GravelTower {
+        final ServerLevel level;
+        final int x;
+        final int z;
+        double y;
+
+        GravelTower(ServerLevel level, int x, int baseY, int z) {
+            this.level = level;
+            this.x = x;
+            this.z = z;
+            this.y = baseY;
+        }
+    }
+
+    // ---- deferred world-build jobs (large exact builds spread across ticks) ----
+
+    /** Register a build job; it is ticked each game tick and removed when it returns true. */
+    public void addBuildJob(java.util.function.BooleanSupplier job) {
+        buildJobs.add(job);
+    }
+
+    private void tickBuildJobs() {
+        for (int i = buildJobs.size() - 1; i >= 0; i--) {
+            if (buildJobs.get(i).getAsBoolean()) {
+                buildJobs.remove(i);
+            }
+        }
+    }
+
+    // ---- tiny scheduler (replaces /schedule) ----
+
+    public void schedule(int delayTicks, Runnable action) {
+        scheduled.add(new Scheduled(delayTicks, action));
+    }
+
+    private void runScheduled() {
+        for (int i = scheduled.size() - 1; i >= 0; i--) {
+            Scheduled s = scheduled.get(i);
+            if (--s.ticks <= 0) {
+                scheduled.remove(i);
+                s.action.run();
+            }
+        }
+    }
+
+    private static final class Scheduled {
+        int ticks;
+        final Runnable action;
+
+        Scheduled(int ticks, Runnable action) {
+            this.ticks = ticks;
+            this.action = action;
+        }
+    }
+
+    /** Immutable snapshot of a player's location, used during swaps. */
+    private record Location(ServerLevel level, double x, double y, double z, float yRot, float xRot) {
+        static Location of(ServerPlayer player) {
+            Vec3 p = player.position();
+            return new Location(Mc.level(player), p.x, p.y, p.z, player.getYRot(), player.getXRot());
+        }
+
+        void apply(ServerPlayer player) {
+            Mc.teleportTo(player, level, x, y, z, yRot, xRot);
+        }
+    }
 }
