@@ -16,6 +16,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
@@ -80,6 +81,9 @@ public final class GameManager {
         m.put(GamePhase.ENDING,  java.util.EnumSet.of(GamePhase.HUB,    GamePhase.RUNNING));
         VALID_TRANSITIONS = java.util.Collections.unmodifiableMap(m);
     }
+
+    /** Half-width of the square hub platform at the origin (covers -20..20 in x/z). */
+    private static final int HUB_SIZE = 20;
 
     /** Minimum spread radius at game start (datapack uses 10,000). */
     private static final int SPREAD_MIN = 10_000;
@@ -1492,11 +1496,22 @@ public final class GameManager {
      */
     private net.minecraft.core.BlockPos buildHubPlatform(ServerLevel level) {
         net.minecraft.core.BlockPos feet = surfaceColumn(level, 0, 0);
-        for (int px = -20; px <= 20; px++) {
-            for (int pz = -20; pz <= 20; pz++) {
+        int maxY = level.getMaxY();
+        for (int px = -HUB_SIZE; px <= HUB_SIZE; px++) {
+            for (int pz = -HUB_SIZE; pz <= HUB_SIZE; pz++) {
                 level.setBlockAndUpdate(feet.offset(px, -1, pz), Blocks.STONE.defaultBlockState());
+                // Clear all blocks at and above the surface so nothing floats over the platform
+                for (int y = feet.getY(); y < maxY; y++) {
+                    net.minecraft.core.BlockPos above = new net.minecraft.core.BlockPos(px, y, pz);
+                    if (!level.getBlockState(above).isAir()) {
+                        level.setBlockAndUpdate(above, Blocks.AIR.defaultBlockState());
+                    }
+                }
             }
         }
+        // Discard item entities that dropped during block replacement (e.g. flowers, short grass)
+        AABB platformBox = new AABB(-HUB_SIZE, feet.getY() - 1, -HUB_SIZE, HUB_SIZE + 1, maxY, HUB_SIZE + 1);
+        level.getEntitiesOfClass(ItemEntity.class, platformBox).forEach(Entity::discard);
         return feet;
     }
 
