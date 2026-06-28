@@ -1531,6 +1531,7 @@ public final class GameManager {
     }
 
     private boolean isSafeSpawnPos(ServerLevel level, BlockPos feet, List<Vec3> dangerMobs) {
+        if (level.getBlockState(feet.below()).isAir()) return false;
         for (int dx = -4; dx <= 4; dx++) {
             for (int dz = -4; dz <= 4; dz++) {
                 for (int dy = -1; dy <= 2; dy++) {
