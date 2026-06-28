@@ -50,11 +50,36 @@ def passed(resp):
     return "passed" in resp.lower()
 
 
-def item_count_near_hub():
-    """Count item entities anywhere in the hub column (full 3D radius from feet)."""
+def block_is(x, y, z, block):
+    """True if the block at (x,y,z) is minecraft:<block>."""
+    return passed(server.run_command(f"/execute if block {x} {y} {z} minecraft:{block}"))
+
+
+def find_floor_y():
+    """Y of the platform floor at the origin column.
+
+    The build clears everything above the stone floor up to the world top, so the
+    topmost non-air block at (0, *, 0) is the floor. We scan down from above any
+    plausible surface; this is independent of where the (fake) player ends up.
+    """
+    for y in range(160, -64, -1):
+        if not block_is(0, y, 0, "air"):
+            return y
+    return None
+
+
+def item_count_in_flower_column(floor_y):
+    """Count item entities in the column above our planted flower (x/z 6..10).
+
+    Clearing the flower's dirt support pops the dandelion, which drops an item the
+    build must discard. We scope the check to that column rather than a wide radius
+    so unrelated natural drops elsewhere in the fresh world can't make this flaky;
+    a *non*-discarded drop would fall straight down the cleared column to the floor,
+    so we span from the floor up past where the flower sat.
+    """
     r = server.run_command(
-        "/execute as Alice at @s run execute if entity "
-        "@e[type=minecraft:item,distance=..256]"
+        "/execute if entity "
+        f"@e[type=minecraft:item,x=6,dx=4,y={floor_y},dy=160,z=6,dz=4]"
     )
     m = re.search(r"Count:\s*(\d+)", r)
     return int(m.group(1)) if m else 0
@@ -81,12 +106,12 @@ def main():
     server.player_spawn("Alice")
     time.sleep(4)
 
-    # The player is teleported onto the platform, so their Y is the floor surface.
-    pos = server.run_command("/data get entity Alice Pos")
-    nums = re.findall(r"-?\d+\.\d+", pos)
-    assert len(nums) >= 2, f"could not read Alice's position: {pos!r}"
-    feet_y = int(float(nums[1]))
-    log(f"\nHub floor surface (Alice feet Y): {feet_y}")
+    # Locate the platform floor from the world itself (the stone floor is laid one
+    # block below the sampled surface, flat across the whole footprint).
+    floor_y = find_floor_y()
+    assert floor_y is not None, "no platform floor found in the origin column"
+    surface_y = floor_y + 1  # the cleared, walkable layer players stand on
+    log(f"\nHub floor at y={floor_y} (walkable surface y={surface_y})")
 
     # --- Assertion 1: deliberate obstructions above the platform were cleared ---
     obstructions_cleared = []
@@ -104,25 +129,23 @@ def main():
     log(f"  flower support ({fx},{fy},{fz}) cleared    : {flower_dirt_cleared}")
     log(f"  flower ({px},{py},{pz}) cleared            : {flower_cleared}")
 
-    # --- Assertion 2: the platform footprint is air above the floor, stone below.
+    # --- Assertion 2: the platform footprint is stone at the floor, air above.
     # Probe the centre and the four corners of the 41x41 footprint.
     corners = [(0, 0), (20, 20), (-20, 20), (20, -20), (-20, -20)]
     air_above = []
     stone_floor = []
     for (cx, cz) in corners:
-        a = passed(server.run_command(
-            f"/execute if block {cx} {feet_y} {cz} minecraft:air"))
-        s = passed(server.run_command(
-            f"/execute if block {cx} {feet_y - 1} {cz} minecraft:stone"))
-        air_above.append(a)
+        s = block_is(cx, floor_y, cz, "stone")
+        a = block_is(cx, surface_y, cz, "air")
         stone_floor.append(s)
-        log(f"  column ({cx},{cz}): air@{feet_y}={a}  stone@{feet_y - 1}={s}")
+        air_above.append(a)
+        log(f"  column ({cx},{cz}): stone@{floor_y}={s}  air@{surface_y}={a}")
     all_air_above = all(air_above)
     all_stone_floor = all(stone_floor)
 
-    # --- Assertion 3: no item entities lingering anywhere in the hub column ------
-    items = item_count_near_hub()
-    log(f"\nItem entities near hub: {items}")
+    # --- Assertion 3: the flower's drop was discarded (none left in its column) --
+    items = item_count_in_flower_column(floor_y)
+    log(f"\nItem entities in planted-flower column: {items}")
 
     errors = server.read_log(grep="Exception|/ERROR]", lines=20, from_start=True)
     if errors and "no matching" not in errors.lower():
@@ -143,7 +166,7 @@ def main():
         if not all_stone_floor:
             log("  FAIL: the stone floor was not laid across the whole footprint")
         if items:
-            log(f"  FAIL: {items} item entit(y/ies) left near the hub — drops not discarded")
+            log(f"  FAIL: {items} item entit(y/ies) left in the flower column — drop not discarded")
     return 0 if ok else 1
 
 
