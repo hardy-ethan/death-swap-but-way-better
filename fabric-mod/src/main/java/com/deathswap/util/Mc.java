@@ -12,7 +12,6 @@ import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.world.level.storage.LevelData;
-import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,7 +30,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.enchantment.Enchantment;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -168,10 +166,6 @@ public final class Mc {
     /** Apply an effect that never expires (until cleared), e.g. for the hub. */
     public static void infiniteEffect(ServerPlayer player, Holder<MobEffect> effect, int amplifier) {
         player.addEffect(new MobEffectInstance(effect, MobEffectInstance.INFINITE_DURATION, amplifier, false, true, true));
-    }
-
-    public static void clearEffect(ServerPlayer player, Holder<MobEffect> effect) {
-        player.removeEffect(effect);
     }
 
     public static void setAttribute(ServerPlayer player, Holder<Attribute> attribute, double value) {
@@ -342,15 +336,6 @@ public final class Mc {
                 net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
     }
 
-    /** Place a chest and drop a single stack into it (e.g. a prison escape kit). */
-    public static void placeChestWithItem(ServerLevel level, BlockPos pos, ItemStack stack) {
-        level.setBlockAndUpdate(pos, Blocks.CHEST.defaultBlockState());
-        if (level.getBlockEntity(pos) instanceof net.minecraft.world.Container container
-                && container.getContainerSize() > 0) {
-            container.setItem(0, stack);
-        }
-    }
-
     /** Spawn coloured dust particles, visible to nearby players (forcefield, etc.). */
     public static void dust(ServerLevel level, double x, double y, double z, int rgb, float scale,
                             int count, double spreadX, double spreadY, double spreadZ) {
@@ -397,10 +382,6 @@ public final class Mc {
     private static boolean isNatural(BlockState state) {
         if (state.isAir()) return false;
         return !state.is(Blocks.BEDROCK) && !state.is(Blocks.BARRIER) && !state.is(Blocks.LIGHT);
-    }
-
-    public static void explodeAt(ServerLevel level, double x, double y, double z, float radius) {
-        level.explode(null, x, y, z, radius, Level.ExplosionInteraction.TNT);
     }
 
     // ---- max health ----
@@ -716,23 +697,6 @@ public final class Mc {
             }
             sign.setText(text, true);
             sign.setChanged();
-            level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
-        }
-    }
-
-    /**
-     * Place a banner block and stamp the given pattern layers onto it (native
-     * {@code setblock <color>_banner{patterns:[...]}}).
-     */
-    public static void bannerWithPatterns(ServerLevel level, BlockPos pos, Block banner,
-            net.minecraft.world.level.block.entity.BannerPatternLayers patterns) {
-        BlockState state = banner.defaultBlockState();
-        level.setBlockAndUpdate(pos, state);
-        if (level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.BannerBlockEntity be) {
-            ItemStack stack = new ItemStack(banner);
-            stack.set(DataComponents.BANNER_PATTERNS, patterns);
-            be.applyComponentsFromItemStack(stack);
-            be.setChanged();
             level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
         }
     }

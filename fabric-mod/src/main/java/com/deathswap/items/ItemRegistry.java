@@ -29,7 +29,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Monster;
-import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.alchemy.Potions;
@@ -63,7 +62,7 @@ public final class ItemRegistry {
 
     // Vanilla attribute base defaults, used to undo temporary changes.
     private static final double DEF_SPEED = 0.1, DEF_JUMP = 0.42, DEF_SCALE = 1.0,
-            DEF_INTERACT = 4.5, DEF_BREAK = 1.0, DEF_GRAVITY = 0.08, DEF_FALL = 1.0, DEF_CAMERA = 4.0;
+            DEF_INTERACT = 4.5, DEF_BREAK = 1.0, DEF_GRAVITY = 0.08, DEF_FALL = 1.0;
 
     private final Map<Integer, DeathSwapItem> items = new HashMap<>();
 
@@ -80,13 +79,8 @@ public final class ItemRegistry {
     }
 
     /** Pick three distinct items (the datapack rolls 3 of 1..110, avoiding repeats). */
-    public List<DeathSwapItem> pickThree(ServerPlayer player, long seed) {
-        List<DeathSwapItem> pool = new ArrayList<>();
-        for (DeathSwapItem item : items.values()) {
-            if (item.isAvailableFor(player)) {
-                pool.add(item);
-            }
-        }
+    public List<DeathSwapItem> pickThree(long seed) {
+        List<DeathSwapItem> pool = new ArrayList<>(items.values());
         Collections.shuffle(pool, new Random(seed));
         return pool.size() <= 3 ? pool : pool.subList(0, 3);
     }

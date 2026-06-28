@@ -42,8 +42,4 @@ public final class ActiveEffect {
             onEnd.run(player);
         }
     }
-
-    public int remainingTicks() {
-        return remainingTicks;
-    }
 }

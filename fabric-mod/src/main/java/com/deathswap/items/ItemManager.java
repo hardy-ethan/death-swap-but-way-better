@@ -83,7 +83,7 @@ public final class ItemManager {
 
     public void offer(ServerPlayer player) {
         PlayerData data = game.data(player);
-        List<DeathSwapItem> picks = registry.pickThree(player, player.getRandom().nextLong());
+        List<DeathSwapItem> picks = registry.pickThree(player.getRandom().nextLong());
         if (picks.size() < 3) {
             return;
         }

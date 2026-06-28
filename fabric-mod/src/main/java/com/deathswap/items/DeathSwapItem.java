@@ -1,16 +1,12 @@
 package com.deathswap.items;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.DyeColor;
-
-import java.util.function.Predicate;
 
 /**
  * Definition of one of the 110 death-swap items: its identity, the dyed display
  * item shown in the hotbar (colour + name + lore, matching the datapack's
- * {@code items/items/*} definitions), who it targets, an optional availability
- * gate, and its effect.
+ * {@code items/items/*} definitions), who it targets, and its effect.
  */
 public final class DeathSwapItem {
 
@@ -21,7 +17,6 @@ public final class DeathSwapItem {
     public final String lore;
     public final ItemTarget target;
     public final ItemEffect effect;
-    private final Predicate<ServerPlayer> available;
 
     private DeathSwapItem(Builder b) {
         this.id = b.id;
@@ -31,11 +26,6 @@ public final class DeathSwapItem {
         this.lore = b.lore;
         this.target = b.target;
         this.effect = b.effect;
-        this.available = b.available;
-    }
-
-    public boolean isAvailableFor(ServerPlayer player) {
-        return available == null || available.test(player);
     }
 
     public static Builder of(int id, DyeColor dye, ChatFormatting nameColor, String name, String lore) {
@@ -50,7 +40,6 @@ public final class DeathSwapItem {
         private final String lore;
         private ItemTarget target = ItemTarget.SELF;
         private ItemEffect effect = (ctx, self, t) -> {};
-        private Predicate<ServerPlayer> available;
 
         private Builder(int id, DyeColor dye, ChatFormatting nameColor, String name, String lore) {
             this.id = id;
@@ -67,11 +56,6 @@ public final class DeathSwapItem {
 
         public Builder effect(ItemEffect e) {
             this.effect = e;
-            return this;
-        }
-
-        public Builder availableWhen(Predicate<ServerPlayer> predicate) {
-            this.available = predicate;
             return this;
         }
 

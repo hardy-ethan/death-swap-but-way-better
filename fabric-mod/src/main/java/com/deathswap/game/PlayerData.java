@@ -73,10 +73,6 @@ public final class PlayerData {
         this.uuid = uuid;
     }
 
-    public boolean hasShield() {
-        return false; // shields are tracked as ActiveEffects; see EffectManager#hasEffect
-    }
-
     public void clearOffer() {
         offeredItems = null;
         choosingItem = false;
