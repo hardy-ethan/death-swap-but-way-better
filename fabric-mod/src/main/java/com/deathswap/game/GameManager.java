@@ -1479,7 +1479,7 @@ public final class GameManager {
      */
     private net.minecraft.core.BlockPos buildHubPlatform(ServerLevel level) {
         net.minecraft.core.BlockPos feet = surfaceColumn(level, 0, 0);
-        int maxY = level.getMaxBuildHeight();
+        int maxY = level.getMaxY();
         for (int px = -HUB_SIZE; px <= HUB_SIZE; px++) {
             for (int pz = -HUB_SIZE; pz <= HUB_SIZE; pz++) {
                 level.setBlockAndUpdate(feet.offset(px, -1, pz), Blocks.STONE.defaultBlockState());

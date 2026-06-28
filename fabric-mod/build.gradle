@@ -30,6 +30,9 @@ dependencies {
 
 	// Fabric API. This is technically optional, but this mod uses many of its hooks.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+	testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
 processResources {
@@ -40,13 +43,14 @@ processResources {
 	}
 }
 
-tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
 }
 
-java {
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
+tasks.named('test') {
+	useJUnitPlatform()
 }
 
 jar {
