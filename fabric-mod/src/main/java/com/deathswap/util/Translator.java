@@ -209,6 +209,9 @@ public final class Translator {
             Map.entry("Health", "Gezondheid"),
             Map.entry("Wins", "Overwinningen"),
 
+            // ---- tab list footer ----
+            Map.entry("Game Duration: ", "Speelduur: "),
+
             // ---- item display names (datapack ch_detect_item; item LORE is NOT translated) ----
             Map.entry("Give a player speed 1 billion: 40 secs", "Geef een speler snelheid 1 miljard: 40 sec"),
             Map.entry("Give yourself materials to build a wither", "Geef jezelf materialen om een Wither te bouwen"),

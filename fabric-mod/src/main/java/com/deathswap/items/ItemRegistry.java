@@ -1130,10 +1130,10 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(72, LIME, ChatFormatting.LIGHT_PURPLE,
                 "Switch game's language to Dutch Nederlands", "For the culture!!!")
                 .effect((ctx, self, t) -> {
-                    ctx.game().toggleLanguage();
+                    boolean nowDutch = ctx.game().toggleLanguage();
                     // use/72a.mcfunction: a per-using-player broadcast after the switch.
                     ctx.game().broadcast(com.deathswap.game.Messages.langSwitched(
-                            ctx.game().settings().isDutch(), self.getDisplayName()));
+                            nowDutch, self.getDisplayName()));
                 }).build());
 
         add(DeathSwapItem.of(73, GRAY, ChatFormatting.WHITE,

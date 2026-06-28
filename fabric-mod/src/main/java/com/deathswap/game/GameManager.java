@@ -6,6 +6,7 @@ import com.deathswap.config.WinsStore;
 import com.deathswap.effects.EffectManager;
 import com.deathswap.items.ItemManager;
 import com.deathswap.util.Mc;
+import com.deathswap.util.Translator;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.network.chat.Component;
@@ -613,7 +614,7 @@ public final class GameManager {
         if (phase == GamePhase.RUNNING) {
             String gameTime = formatClock(gameTicksElapsed / 20);
             footer = Component.literal(clocks).withStyle(ChatFormatting.GREEN)
-                    .append(Component.literal("\nGame Duration: " + gameTime).withStyle(ChatFormatting.DARK_GREEN));
+                    .append(Component.literal("\n" + Translator.translate(nl(), "Game Duration: ") + gameTime).withStyle(ChatFormatting.DARK_GREEN));
         } else {
             footer = Component.literal(clocks).withStyle(ChatFormatting.GREEN);
         }
@@ -947,9 +948,18 @@ public final class GameManager {
         server.getGameRules().set(GameRules.ADVANCE_WEATHER, true, server);
     }
 
-    public void toggleLanguage() {
+    public boolean toggleLanguage() {
         languageToggledByItem = !languageToggledByItem;
         boolean toDutch = nl();
+        scoreboard.init(server, toDutch);
+        if (phase == GamePhase.HUB) {
+            scoreboard.startHub(server, toDutch);
+            updateHubScoreboard();
+        } else if (phase == GamePhase.RUNNING || phase == GamePhase.ENDING) {
+            scoreboard.start(server, toDutch);
+            updateSidebar();
+        }
+        updateTabListFooter();
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             Mc.titleRaw(p, Messages.langTitle(toDutch), Messages.langSubtitle(toDutch));
             Mc.playSound(p, SoundEvents.UI_BUTTON_CLICK, 9.0f, 1.0f);
@@ -958,6 +968,7 @@ public final class GameManager {
                 Mc.msg(p, Messages.langTranslatorNote());
             }
         }
+        return toDutch;
     }
 
     // ---- death / elimination (game/player_died, player_eliminated) ----
