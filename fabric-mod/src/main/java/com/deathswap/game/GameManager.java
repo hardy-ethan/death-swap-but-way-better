@@ -81,9 +81,10 @@ public final class GameManager {
         VALID_TRANSITIONS = java.util.Collections.unmodifiableMap(m);
     }
 
-    /** Minimum spread radius at game start (datapack uses 10,000). */
+    /** Half-width of the square hub platform at the origin (covers -20..20 in x/z). */
     private static final int HUB_SIZE = 20;
 
+    /** Minimum spread radius at game start (datapack uses 10,000). */
     private static final int SPREAD_MIN = 10_000;
     /**
      * Maximum spread radius. The datapack uses 29,999,000 which is brutal on
