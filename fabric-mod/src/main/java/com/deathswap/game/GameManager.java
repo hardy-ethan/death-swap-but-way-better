@@ -82,6 +82,8 @@ public final class GameManager {
     }
 
     /** Minimum spread radius at game start (datapack uses 10,000). */
+    private static final int HUB_SIZE = 20;
+
     private static final int SPREAD_MIN = 10_000;
     /**
      * Maximum spread radius. The datapack uses 29,999,000 which is brutal on
@@ -1478,8 +1480,8 @@ public final class GameManager {
     private net.minecraft.core.BlockPos buildHubPlatform(ServerLevel level) {
         net.minecraft.core.BlockPos feet = surfaceColumn(level, 0, 0);
         int maxY = level.getMaxBuildHeight();
-        for (int px = -20; px <= 20; px++) {
-            for (int pz = -20; pz <= 20; pz++) {
+        for (int px = -HUB_SIZE; px <= HUB_SIZE; px++) {
+            for (int pz = -HUB_SIZE; pz <= HUB_SIZE; pz++) {
                 level.setBlockAndUpdate(feet.offset(px, -1, pz), Blocks.STONE.defaultBlockState());
                 // Clear all blocks at and above the surface so nothing floats over the platform
                 for (int y = feet.getY(); y < maxY; y++) {
@@ -1491,7 +1493,7 @@ public final class GameManager {
             }
         }
         // Discard item entities that dropped during block replacement (e.g. flowers, short grass)
-        AABB platformBox = new AABB(-20, feet.getY() - 1, -20, 21, maxY, 21);
+        AABB platformBox = new AABB(-HUB_SIZE, feet.getY() - 1, -HUB_SIZE, HUB_SIZE + 1, maxY, HUB_SIZE + 1);
         level.getEntitiesOfClass(ItemEntity.class, platformBox).forEach(Entity::discard);
         return feet;
     }
