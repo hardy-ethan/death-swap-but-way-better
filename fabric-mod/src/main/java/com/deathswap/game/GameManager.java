@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
@@ -1476,11 +1477,22 @@ public final class GameManager {
      */
     private net.minecraft.core.BlockPos buildHubPlatform(ServerLevel level) {
         net.minecraft.core.BlockPos feet = surfaceColumn(level, 0, 0);
+        int maxY = level.getMaxBuildHeight();
         for (int px = -20; px <= 20; px++) {
             for (int pz = -20; pz <= 20; pz++) {
                 level.setBlockAndUpdate(feet.offset(px, -1, pz), Blocks.STONE.defaultBlockState());
+                // Clear all blocks at and above the surface so nothing floats over the platform
+                for (int y = feet.getY(); y < maxY; y++) {
+                    net.minecraft.core.BlockPos above = new net.minecraft.core.BlockPos(px, y, pz);
+                    if (!level.getBlockState(above).isAir()) {
+                        level.setBlockAndUpdate(above, Blocks.AIR.defaultBlockState());
+                    }
+                }
             }
         }
+        // Discard item entities that dropped during block replacement (e.g. flowers, short grass)
+        AABB platformBox = new AABB(-20, feet.getY() - 1, -20, 21, maxY, 21);
+        level.getEntitiesOfClass(ItemEntity.class, platformBox).forEach(Entity::discard);
         return feet;
     }
 
