@@ -1613,12 +1613,23 @@ public final class ItemRegistry {
         add(DeathSwapItem.of(107, RED, ChatFormatting.RED,
                 "Summon Oppenheimer's NUCLEAR bomb on someone", "Now you are become death, destroyer of Minecrafts")
                 .target(ItemTarget.OPPONENT).effect((ctx, self, t) -> {
-                    // The datapack nuke is TNT with explosion_power:40 (the entity's
-                    // power field has no setter, so summon via command like the datapack
-                    // does — a plain primed-TNT entity only explodes at power 4).
-                    String nbt = "{fuse:180,explosion_power:40,Tags:[\"ent\"]}";
-                    for (String pos : new String[]{"~ ~1 ~", "~2 ~1 ~", "~-2 ~1 ~", "~ ~1 ~2", "~ ~1 ~-2"}) {
-                        Mc.runAt(t, "summon tnt " + pos + " " + nbt);
+                    Vec3 nukePos = t.position();
+                    ServerLevel nukeLvl = Mc.level(t);
+                    net.minecraft.nbt.CompoundTag nukeTag = new net.minecraft.nbt.CompoundTag();
+                    nukeTag.putShort("Fuse", (short) 180);
+                    nukeTag.putFloat("explosion_power", 40.0f);
+                    net.minecraft.world.level.storage.ValueInput nukeInput =
+                            net.minecraft.world.level.storage.TagValueInput.create(
+                                    net.minecraft.util.ProblemReporter.DISCARDING, nukeLvl.registryAccess(), nukeTag);
+                    int[][] nukeOffsets = {{0, 1, 0}, {2, 1, 0}, {-2, 1, 0}, {0, 1, 2}, {0, 1, -2}};
+                    for (int[] o : nukeOffsets) {
+                        net.minecraft.world.entity.item.PrimedTnt tnt =
+                                EntityTypes.TNT.create(nukeLvl, net.minecraft.world.entity.EntitySpawnReason.COMMAND);
+                        if (tnt == null) continue;
+                        tnt.setPos(nukePos.x + o[0], nukePos.y + o[1], nukePos.z + o[2]);
+                        tnt.load(nukeInput);
+                        tnt.addTag("ent");
+                        nukeLvl.addFreshEntity(tnt);
                     }
                     Mc.title(t, translate(ctx, ">> NUKE!!! <<"), translate(ctx, "Explodes in 12 secs -- RUN!!"), ChatFormatting.GOLD, ChatFormatting.RED);
                     announce(ctx.game(), self, "Summoned the Oppenheimer nuclear bomb on", t, ChatFormatting.RED);

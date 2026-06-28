@@ -418,27 +418,6 @@ public final class Mc {
         }
     }
 
-    // ---- vanilla subsystem shortcut ----
-
-    /**
-     * Run a vanilla command as the server (full permissions), positioned at the
-     * given player. Used only for subsystems that are impractical to reimplement
-     * by hand: structure placement, time, difficulty and game rules.
-     */
-    public static void runAt(ServerPlayer player, String command) {
-        MinecraftServer server = level(player).getServer();
-        CommandSourceStack source = server.createCommandSourceStack()
-                .withLevel(level(player))
-                .withPosition(player.position())
-                .withSuppressedOutput();
-        server.getCommands().performPrefixedCommand(source, command);
-    }
-
-    public static void runServer(MinecraftServer server, String command) {
-        server.getCommands().performPrefixedCommand(
-                server.createCommandSourceStack().withSuppressedOutput(), command);
-    }
-
     // ---- world: native structure placement (replaces /place structure) ----
 
     /**

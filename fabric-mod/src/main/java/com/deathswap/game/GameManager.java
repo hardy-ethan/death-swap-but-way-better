@@ -29,6 +29,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.stats.Stats;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.clock.ClockTimeMarkers;
+import net.minecraft.world.clock.WorldClock;
+import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -920,7 +925,8 @@ public final class GameManager {
 
     /** Item 66: toggle the overworld between midnight and noon. */
     public void toggleTime() {
-        Mc.runServer(server, isNight() ? "time set noon" : "time set midnight");
+        Holder<WorldClock> overworldClock = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD);
+        server.overworld().clockManager().moveToTimeMarker(overworldClock, isNight() ? ClockTimeMarkers.NOON : ClockTimeMarkers.MIDNIGHT);
     }
 
     public boolean isNight() {
@@ -929,15 +935,16 @@ public final class GameManager {
     }
 
     private void resetAndFreezeTimeAndWeather() {
-        Mc.runServer(server, "time set noon");
-        Mc.runServer(server, "gamerule doDaylightCycle false");
-        Mc.runServer(server, "weather clear");
-        Mc.runServer(server, "gamerule doWeatherCycle false");
+        Holder<WorldClock> overworldClock = server.registryAccess().lookupOrThrow(Registries.WORLD_CLOCK).getOrThrow(WorldClocks.OVERWORLD);
+        server.overworld().clockManager().moveToTimeMarker(overworldClock, ClockTimeMarkers.NOON);
+        server.getGameRules().set(GameRules.ADVANCE_TIME, false, server);
+        server.overworld().resetWeatherCycle();
+        server.getGameRules().set(GameRules.ADVANCE_WEATHER, false, server);
     }
 
     private void unfreezeTimeAndWeather() {
-        Mc.runServer(server, "gamerule doDaylightCycle true");
-        Mc.runServer(server, "gamerule doWeatherCycle true");
+        server.getGameRules().set(GameRules.ADVANCE_TIME, true, server);
+        server.getGameRules().set(GameRules.ADVANCE_WEATHER, true, server);
     }
 
     public void toggleLanguage() {
