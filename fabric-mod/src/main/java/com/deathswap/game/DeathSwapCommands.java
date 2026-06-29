@@ -78,7 +78,7 @@ public final class DeathSwapCommands {
                         .executes(ctx -> {
                             Component reason = Component.literal(
                                     "Resetting the world (new seed). The server is restarting. Please "
-                                            + "reconnect in ~50 seconds.");
+                                            + "reconnect in ~15 seconds.");
                             if (!game.triggerWorldReset(reason)) {
                                 ctx.getSource().sendFailure(Component.literal(
                                         "Can't reset now, only from the hub with no game running "
