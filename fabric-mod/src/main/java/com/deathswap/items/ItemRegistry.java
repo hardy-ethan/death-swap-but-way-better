@@ -1468,6 +1468,7 @@ public final class ItemRegistry {
                                 || e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrownExperienceBottle
                                 || e instanceof net.minecraft.world.entity.item.ItemEntity
                                 || e instanceof net.minecraft.world.entity.AreaEffectCloud
+                                || e instanceof net.minecraft.world.entity.projectile.FireworkRocketEntity
                                 || e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion tp && hasBeneficialEffect(tp.getItem())) {
                                 continue;
                             }
